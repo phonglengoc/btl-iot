@@ -5,14 +5,14 @@
 # ============================================================================
 
 gateway:
-  # "simulator" -> Chay bo gia lap phan cung YoloUNO #1 + #2 + BLE (khong can mach that)
-  # "serial"    -> Doc truc tiep cong USB-CDC 921600 bps tu mach YoloUNO #2 that
+  # "simulator" -> Run the YoloUNO #1 + #2 + BLE physics HIL simulator (no hardware required)
+  # "serial"    -> Read directly from USB-CDC 921600 bps on physical YoloUNO #2
   source_mode: "simulator"
   serial_port: "COM4"
   serial_baudrate: 921600
   simulator_tcp_host: "127.0.0.1"
   simulator_tcp_port: 19550
-  # Cong HTTP gia lap Embedded Web Server cua Node 2 (T07) khi chay tren PC:
+  # Local HTTP port emulating Node 2's Embedded Web Server (T07) on PC:
   virtual_node2_http_port: 8082
   telemetry_interval_sec: 1.0
   runtime_dir: "gateway/runtime"
@@ -31,12 +31,12 @@ coreiot:
   host: "app.coreiot.io"
   port: 1883
   use_tls: false
-  # Dien Gateway Access Token tu CoreIOT (Device co tick `IsGateway = true`)
+  # Enter your CoreIOT Gateway Access Token (Device with `IsGateway = true`)
   gateway_token: "REPLACE_WITH_YOUR_COREIOT_GATEWAY_ACCESS_TOKEN"
   node1_device_name: "YoloUNO_Node1_Tx"
   node2_device_name: "YoloUNO_Node2_Rx"
   device_profile: "CSI_Radar_Profile"
-  # Tu dong chuyen sang che do ghi nhat ky cuc bo (Offline Mock Sync) neu chua dien Token that
+  # Automatically fall back to local offline journal (Mock Sync) if placeholder token is unchanged
   mock_if_placeholder_token: true
 
 telegram_alert:

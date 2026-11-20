@@ -3,13 +3,13 @@
 
 /**
  * @file web_server.h
- * @brief Embedded HTTP Web Server tu lap trinh tren Node 2 (Ma cong nghe T07, 1.0 diem).
+ * @brief Custom Embedded HTTP Web Server running on Node 2 (Technology Item T07, 1.0 point).
  *
- * Cung cap giao dien HTML5/CSS/JS hien dai va 3 diem cuoi RESTful API (Muc 3.2.3 Spec):
- *   - GET  /            : Giao dien dieu khien va giam sat truc quan tai cho
- *   - GET  /api/status  : JSON trang thai CSI, TinyML, DHT20, BLE, IP, Packet Loss
- *   - POST /api/config  : Cap nhat `fall_threshold`, `ble_rssi_min`, `security_armed`
- *   - POST /api/alarm   : Kiem thu bat/tat coi Buzzer (GPIO10) va den WS2812B RGB (GPIO18)
+ * Provides a responsive HTML5/CSS/JS control portal and 3 RESTful API endpoints (Report Section 3.2.3):
+ *   - GET  /            : Local real-time monitoring and configuration portal
+ *   - GET  /api/status  : JSON telemetry (CSI state, TinyML, DHT20, BLE, IP, Packet Loss)
+ *   - POST /api/config  : Update `fall_threshold`, `ble_rssi_min`, `security_armed`
+ *   - POST /api/alarm   : Test/control Buzzer (GPIO10) and WS2812B RGB LEDs (GPIO18)
  */
 
 #include <Arduino.h>

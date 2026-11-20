@@ -1,10 +1,10 @@
 /**
  * @file cpp_tinyml_unit_test.cpp
- * @brief Kiem thu don vi C++17 tren PC (bien dich bang `g++`) cho:
- *   1. Giao thuc khung nhi phan 24-byte `csi_ping_packet_t`, CRC-8 (0x07) & DHT20 CRC-8 (0x31)
- *   2. Bo xu ly tin hieu Hampel + Butterworth bac 4 trong `csi_dsp.h`
- *   3. Bo suy luan `EdgeTinyMLClassifier::predict()` INT8 1D-CNN trong `tinyml_infer.h`
- *      (doc stdin vector kiem thu tu Python va xuat xac suat de doi chieu bit-accurate!).
+ * @brief Host C++17 unit test (compiled with `g++`) verifying:
+ *   1. 24-byte ESP-NOW binary frame `csi_ping_packet_t`, CRC-8 (0x07) & DHT20 CRC-8 (0x31)
+ *   2. Causal Hampel + 4th-order Butterworth DSP pipeline in `csi_dsp.h`
+ *   3. `EdgeTinyMLClassifier::predict()` INT8 1D-CNN inference in `tinyml_infer.h`
+ *      (reads stdin feature tensor from Python and prints probabilities for bit-exact verification).
  */
 
 #include <stdio.h>
@@ -17,7 +17,7 @@
 #include "../firmware/node2_rx_edge_ai/include/tinyml_infer.h"
 
 int main(int argc, char** argv) {
-    // 1. Kiem tra kich thuoc goi tin ESP-NOW 24 byte & CRC-8
+    // 1. Verify 24-byte ESP-NOW packet size & CRC-8 integrity
     static_assert(sizeof(csi_ping_packet_t) == 24, "Packet size must be 24 bytes");
     csi_ping_packet_t pkt{};
     pkt.magic_header   = CSI_PING_MAGIC_HEADER;
@@ -29,14 +29,14 @@ int main(int argc, char** argv) {
     pkt.crc8_checksum  = csi_crc8_compute(reinterpret_cast<const uint8_t*>(&pkt), sizeof(pkt) - 1);
     assert(pkt.crc8_checksum != 0 || pkt.seq_id == 0);
 
-    // 2. Kiem tra bo loc DSP Hampel (khu xung nhieu spike) + Butterworth
+    // 2. Verify Hampel spike rejection + 4th-order Butterworth bandpass filter
     float dummyWindow[200][CSI_ACTIVE_SUBCARRIERS];
     for (int t = 0; t < 200; ++t) {
         for (int c = 0; c < (int)CSI_ACTIVE_SUBCARRIERS; ++c) {
             dummyWindow[t][c] = 30.0f + 5.0f * sinf(2.0f * 3.14159265f * 8.0f * ((float)t / 100.0f));
         }
     }
-    // Tiem 1 xung nhieu cuc lon o khung t=50
+    // Inject a synthetic high-amplitude outlier spike at frame t=50
     dummyWindow[50][0] = 999.0f;
 
     float edgeTensor[TINYML_WINDOW_LEN][TINYML_NUM_SUBCARRIERS];
@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    // 3. Neu co tham so `--stdin-vector`, doc ma tran 100x16 tu stdin va in 4 xac suat INT8!
+    // 3. When `--stdin-vector` is passed, read a 100x16 matrix from stdin and output 4 INT8 probabilities
     if (argc > 1 && strcmp(argv[1], "--stdin-vector") == 0) {
         float inVec[100][16];
         for (int t = 0; t < 100; ++t) {

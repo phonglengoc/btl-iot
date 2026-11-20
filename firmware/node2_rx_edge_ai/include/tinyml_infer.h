@@ -3,9 +3,9 @@
 
 /**
  * @file tinyml_infer.h
- * @brief Bo suy luan mang No-ron Tich chap 1 Chieu luong tu hoa 8-bit (INT8 1D-CNN TinyML - Ma T04).
+ * @brief 8-bit Quantized 1D Convolutional Neural Network Inference Engine (INT8 1D-CNN TinyML - T04).
  *
- * Kien truc (Khop 100% Bang 3.3 trong `spec_btl_iot_fall_detection.tex`):
+ * Architecture (Matches Table 3.3 in `HK261_Group01_IoTReport.tex`):
  *   Input [100][16] (float32 -> quantize INT8)
  *     -> Conv1D(16 -> 16, k=5, pad=2, INT8xINT8->INT32 MAC + ReLU)
  *     -> MaxPool1D(2) -> [50][16] (quantize INT8)
@@ -14,8 +14,8 @@
  *     -> Dense(32 -> 16, INT8xINT8->INT32 MAC + ReLU)
  *     -> Dense(16 -> 4)  + Softmax(4)
  *
- * Dung luong Flash cua toan bo trong so INT8 chi ~3.4 KB, Tensor Arena tren Stack < 8 KB,
- * thoi gian suy luan tren ESP32-S3 @ 240 MHz dat ~1.8 - 3.5 ms (vuot xa muc tieu < 18 ms!).
+ * Total INT8 weight footprint in Flash is ~3.4 KB, stack Tensor Arena < 8 KB,
+ * and on-device inference latency on ESP32-S3 @ 240 MHz is ~1.8 - 3.5 ms (well below the 18 ms target).
  */
 
 #include <stdint.h>
@@ -27,8 +27,8 @@
 
 typedef struct {
     uint8_t predicted_class;                 // 0: EMPTY, 1: STATIONARY, 2: WALKING, 3: FALL
-    float   confidence;                      // Xac suat lop cao nhat [0..1]
-    float   probs[TINYML_NUM_CLASSES];       // Xac suat Softmax cua ca 4 lop
+    float   confidence;                      // Highest class probability [0..1]
+    float   probs[TINYML_NUM_CLASSES];       // Softmax probability vector across all 4 classes
 } tinyml_result_t;
 
 class EdgeTinyMLClassifier {
@@ -48,10 +48,10 @@ public:
     }
 
     /**
-     * @brief Chay suy luan INT8 1D-CNN tren cua so dac trung [100][16]
+     * @brief Execute INT8 1D-CNN inference on a [100][16] CSI feature window
      */
     static tinyml_result_t predict(const float inputTensor[TINYML_WINDOW_LEN][TINYML_NUM_SUBCARRIERS]) {
-        // 0. Luong tu hoa dau vao [100][16] sang INT8
+        // 0. Quantize input tensor [100][16] to symmetric INT8
         int8_t x_q[100][16];
         for (int t = 0; t < 100; ++t) {
             for (int c = 0; c < 16; ++c) {
@@ -59,7 +59,7 @@ public:
             }
         }
 
-        // 1. Conv1D(16 -> 16, k=5, pad=2) + ReLU (tich luy INT32)
+        // 1. Conv1D(16 -> 16, k=5, pad=2) + ReLU (INT32 accumulator)
         // TINYML_CONV1_W layout: [out_ch=16][in_ch=16][k=5]
         float c1_out[100][16];
         const float dequant1 = TINYML_INPUT_SCALE * TINYML_CONV1_W_SCALE;
@@ -81,7 +81,7 @@ public:
             }
         }
 
-        // MaxPool1D(2) -> [50][16] & Luong tu hoa kich hoat sang INT8
+        // MaxPool1D(2) -> [50][16] & requantize activation to INT8
         int8_t p1_q[50][16];
         for (int t = 0; t < 50; ++t) {
             for (int c = 0; c < 16; ++c) {

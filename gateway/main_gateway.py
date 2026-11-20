@@ -1,7 +1,7 @@
 """
 PC Local IoT Gateway Main Orchestrator (`T08`, `T09`, `T13`, `T15`, `N04`, `N06`).
 
-Responsibilities (Sections 2.3.3 & 3.4 of `spec_btl_iot_fall_detection.tex`):
+Responsibilities (Sections 2.3.3 & 3.4 of `HK261_Group01_IoTReport.tex`):
   1. Ingests 100 Hz CSI + BLE + DHT20 telemetry from YoloUNO #2 via USB-CDC (`921600 bps`)
      OR from the Hardware-Free `VirtualYoloUnoCluster` (`simulator` mode).
   2. Runs real-time STFT Spectrogram 2D-CNN cross-verification on the NVIDIA GeForce RTX 5070 GPU

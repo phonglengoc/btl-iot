@@ -62,13 +62,13 @@ class VirtualYoloUnoCluster:
     """Emulates Node 1 + Node 2 + BLE Tag + Embedded Web Server + USB-CDC Serial stream."""
 
     SCENARIOS = [
-        "EMPTY",                # Phong trong
-        "STATIONARY_FAMILY",    # Nguoi nha ngoi doc sach / ngu (BLE hop le)
-        "SIT_FAST_HARD_NEG",    # Ngoi xuong ghe nhanh (Hard negative chong bao gia!)
-        "WALKING_FAMILY",       # Nguoi nha di lai binh thuong (BLE hop le -> An toan)
-        "WALKING_INTRUDER",     # Ke la di lai KHONG co the BLE -> Bao dong Dot nhap!
-        "FALL_EMERGENCY",       # Nguoi cao tuoi bi TE NGA -> Bao dong Cap cuu!
-        "SOS_BUTTON_HOLD",      # Nhan giu nut SOS 3 giay tren Node 2
+        "EMPTY",                # Empty room baseline
+        "STATIONARY_FAMILY",    # Authorized resident sitting/sleeping (valid BLE)
+        "SIT_FAST_HARD_NEG",    # Fast sitting motion (hard negative to prevent false alarms)
+        "WALKING_FAMILY",       # Authorized resident walking (valid BLE -> safe)
+        "WALKING_INTRUDER",     # Unauthorized intruder walking WITHOUT BLE tag -> Intrusion alert
+        "FALL_EMERGENCY",       # Elderly resident falling -> Critical fall emergency
+        "SOS_BUTTON_HOLD",      # Physical SOS button held for 3 seconds on Node 2
     ]
 
     def __init__(

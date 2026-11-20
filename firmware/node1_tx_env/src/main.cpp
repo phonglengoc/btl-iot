@@ -1,11 +1,11 @@
 /**
- * @file main.cpp (Node 1 - YoloUNO #1: Tram Phat Song CSI & Cam bien I2C DHT20)
- * @brief Ma cong nghe dam nhiem:
- *   - T01 (0.5d): Giao tiep cam bien nhiet am I2C DHT20/AHT20 (dia chi 0x38, GPIO11 SDA, GPIO12 SCL)
- *                 co kiem tra CRC-8 da thuc 0x31 va xuat chuoi JSON chuan Tasmota/CoreIOT.
- *   - T06 (1.5d): Phat lien tuc khung tin nhi phan `csi_ping_packet_t` (24 byte) o tan so co dinh
- *                 100 Hz (chu ky 10 ms) qua giao thuc ESP-NOW tren Kenh 6 (2437 MHz, WIFI_PS_NONE, +19.5 dBm).
- *   - T14 (2.0d): Ho tro cap nhat Firmware tu xa qua mang (OTA) tu CoreIOT voi xac thuc SHA-256 & Rollback.
+ * @file main.cpp (Node 1 - YoloUNO #1: CSI Transmitter & I2C DHT20 Sensor Node)
+ * @brief Assigned technology items:
+ *   - T01 (0.5 pt): I2C DHT20/AHT20 environmental sensor (address 0x38, GPIO11 SDA, GPIO12 SCL)
+ *                   with CRC-8 (poly 0x31) verification and Tasmota/CoreIOT-compatible JSON output.
+ *   - T06 (1.5 pt): Continuous 24-byte binary `csi_ping_packet_t` transmission at fixed 100 Hz
+ *                   (10 ms period) over ESP-NOW on Channel 6 (2437 MHz, WIFI_PS_NONE, +19.5 dBm).
+ *   - T14 (2.0 pt): CoreIOT Over-the-Air (OTA) firmware updates with SHA-256 verification & Rollback.
  */
 
 #include <Arduino.h>
@@ -24,7 +24,7 @@
 #include "csi_protocol.h"
 #include "ota_updater.h"
 
-// Bien chia se an toan giua Task_I2C_EnvRead (Core 0) va Task_ESPNOW_PingTx (Core 1)
+// Thread-safe shared state between Task_I2C_EnvRead (Core 0) and Task_ESPNOW_PingTx (Core 1)
 static portMUX_TYPE g_envMux = portMUX_INITIALIZER_UNLOCKED;
 static volatile float   g_latestTempC  = 27.5f;
 static volatile float   g_latestHumiRh = 65.0f;
@@ -33,14 +33,14 @@ static volatile uint32_t g_txSeqId     = 0;
 static volatile uint32_t g_txFailCount = 0;
 
 // ============================================================================
-// Trinh dieu khien truc tiep cam bien I2C DHT20 / AHT20 (0x38) - Khong phu thuoc thu vien ngoai
+// Direct I2C driver for DHT20 / AHT20 (0x38) - Zero external library dependency
 // ============================================================================
 static bool dht20Init() {
     Wire.begin(NODE1_I2C_SDA_PIN, NODE1_I2C_SCL_PIN, 100000u); // 100 kHz Standard I2C
-    delay(40); // Cho >= 40 ms sau khi cap nguon theo datasheet DHT20
+    delay(40); // Wait >= 40 ms after power-on per DHT20 datasheet
 
     Wire.beginTransmission(NODE1_DHT20_I2C_ADDR);
-    Wire.write(0x71); // Doc thanh ghi trang thai
+    Wire.write(0x71); // Read status register
     if (Wire.endTransmission() != 0) {
         return false;
     }
@@ -49,7 +49,7 @@ static bool dht20Init() {
     }
     uint8_t status = Wire.read();
     if ((status & 0x18) != 0x18) {
-        // Khoi tao hieu chuan thanh ghi 0x1B, 0x1C, 0x1E theo Aosong Application Note
+        // Initialize calibration registers 0x1B, 0x1C, 0x1E per Aosong Application Note
         const uint8_t initRegs[3] = {0x1B, 0x1C, 0x1E};
         for (uint8_t reg : initRegs) {
             Wire.beginTransmission(NODE1_DHT20_I2C_ADDR);
@@ -64,7 +64,7 @@ static bool dht20Init() {
 }
 
 static bool dht20ReadSample(float& outTempC, float& outHumiRh) {
-    // 1. Gui lenh kich hoat do: 0xAC 0x33 0x00
+    // 1. Send measurement trigger command: 0xAC 0x33 0x00
     Wire.beginTransmission(NODE1_DHT20_I2C_ADDR);
     Wire.write(0xAC);
     Wire.write(0x33);
@@ -73,10 +73,10 @@ static bool dht20ReadSample(float& outTempC, float& outHumiRh) {
         return false;
     }
 
-    // 2. Doi chuyen doi ADC 80 ms
+    // 2. Wait 80+ ms for ADC conversion
     vTaskDelay(pdMS_TO_TICKS(85));
 
-    // 3. Doc 7 byte ket qua: [State, RH_H, RH_M, RH_L|T_H, T_M, T_L, CRC8]
+    // 3. Read 7 response bytes: [State, RH_H, RH_M, RH_L|T_H, T_M, T_L, CRC8]
     if (Wire.requestFrom((uint8_t)NODE1_DHT20_I2C_ADDR, (uint8_t)7) != 7) {
         return false;
     }
@@ -85,7 +85,7 @@ static bool dht20ReadSample(float& outTempC, float& outHumiRh) {
         raw[i] = Wire.read();
     }
 
-    // Kiem tra co Busy (bit 7 == 0) va CRC-8 da thuc 0x31
+    // Verify Busy flag (bit 7 == 0) and CRC-8 (polynomial 0x31)
     if ((raw[0] & 0x80u) != 0) {
         return false;
     }
@@ -103,7 +103,7 @@ static bool dht20ReadSample(float& outTempC, float& outHumiRh) {
 }
 
 // ============================================================================
-// Callback phat ESP-NOW
+// ESP-NOW transmit callback
 // ============================================================================
 static void onEspNowDataSent(const uint8_t* /*mac_addr*/, esp_now_send_status_t status) {
     if (status != ESP_NOW_SEND_SUCCESS) {
@@ -112,7 +112,7 @@ static void onEspNowDataSent(const uint8_t* /*mac_addr*/, esp_now_send_status_t 
 }
 
 // ============================================================================
-// Task 1: Doc cam bien I2C DHT20 moi 5000 ms tren Core 0 (T01)
+// Task 1: Poll I2C DHT20 sensor every 5000 ms on Core 0 (T01)
 // ============================================================================
 static void Task_I2C_EnvRead(void* /*pvParameters*/) {
     bool sensorOk = dht20Init();
@@ -134,7 +134,7 @@ static void Task_I2C_EnvRead(void* /*pvParameters*/) {
         }
         portEXIT_CRITICAL(&g_envMux);
 
-        // Xuat chuoi JSON tuong thich dinh dang Tasmota SENSOR de de dang kiem chung T01 qua Serial
+        // Emit Tasmota-compatible JSON over Serial for T01 diagnostics
         Serial.printf("{\"Time\":%lu,\"DHT20\":{\"Temperature\":%.2f,\"Humidity\":%.2f,\"I2C_OK\":%s},"
                       "\"ESPNOW\":{\"tx_seq\":%lu,\"tx_fail\":%lu,\"ch\":%d},\"fw\":\"%s\"}\n",
                       (unsigned long)millis(),
@@ -146,12 +146,12 @@ static void Task_I2C_EnvRead(void* /*pvParameters*/) {
                       CSI_WIFI_CHANNEL,
                       FIRMWARE_VERSION);
 
-        // Nhan lenh OTA tu Serial neu can kich hoat kiem thu T14
+        // Listen for optional Serial OTA trigger command for T14 verification
         if (Serial.available()) {
             String cmd = Serial.readStringUntil('\n');
             cmd.trim();
             if (cmd.startsWith("OTA:")) {
-                // Cu phap: OTA:<version>:<sha256_optional>
+                // Syntax: OTA:<version>:<sha256_optional>
                 int sep = cmd.indexOf(':', 4);
                 String ver = (sep > 4) ? cmd.substring(4, sep) : cmd.substring(4);
                 String sha = (sep > 4) ? cmd.substring(sep + 1) : "";
@@ -172,7 +172,7 @@ static void Task_I2C_EnvRead(void* /*pvParameters*/) {
 }
 
 // ============================================================================
-// Task 2: Phat xung ESP-NOW 100 Hz dung chu ky 10 ms tren Core 1 (T06)
+// Task 2: Fixed 100 Hz (10 ms) ESP-NOW CSI ping transmitter on Core 1 (T06)
 // ============================================================================
 static void Task_ESPNOW_PingTx(void* /*pvParameters*/) {
     const TickType_t periodTicks = pdMS_TO_TICKS(1000 / NODE1_ESPNOW_HZ); // 10 ms = 100 Hz
@@ -199,7 +199,7 @@ static void Task_ESPNOW_PingTx(void* /*pvParameters*/) {
 
         esp_now_send(NODE2_RX_MAC_ADDR, reinterpret_cast<const uint8_t*>(&pkt), sizeof(pkt));
 
-        // Nhay nhe LED onboard GPIO48 moi 50 goi (0.5 giay) bao dang phat song CSI
+        // Blink onboard GPIO48 LED every 50 packets (0.5 s) as a CSI transmit heartbeat
         if ((pkt.seq_id % 50u) == 0u) {
             ledToggle = !ledToggle;
             #ifdef RGB_BUILTIN
@@ -212,7 +212,7 @@ static void Task_ESPNOW_PingTx(void* /*pvParameters*/) {
 }
 
 // ============================================================================
-// Khoi dong Node 1
+// Node 1 Initialization
 // ============================================================================
 void setup() {
     Serial.begin(SERIAL_CSI_BAUDRATE);
@@ -224,10 +224,10 @@ void setup() {
     Serial.println(" Codes: T01 (I2C DHT20), T06 (ESP-NOW 100Hz), T14 (OTA)     ");
     Serial.println("============================================================");
 
-    // Cau hinh Wi-Fi Station co dinh Kenh 6 (2437 MHz, 802.11n HT20) cho ESP-NOW CSI
+    // Lock Wi-Fi Station to Channel 6 (2437 MHz, 802.11n HT20) for stable ESP-NOW CSI
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
-    esp_wifi_set_ps(WIFI_PS_NONE); // Tat tiet kiem nang luong modem de giu on dinh pha/bien do CSI
+    esp_wifi_set_ps(WIFI_PS_NONE); // Disable modem sleep to preserve CSI amplitude/phase stability
     esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
     esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
     esp_wifi_set_channel(CSI_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
@@ -251,7 +251,7 @@ void setup() {
         Serial.println("[NODE1] WARN: Failed to add Node 2 peer MAC (check config.h)");
     }
 
-    // Khoi tao 2 tac vu FreeRTOS tren 2 nhan rieng biet theo Muc 3.2.1 cua Spec
+    // Spawn 2 pinned FreeRTOS tasks on dedicated CPU cores (Section 3.2.1 of Report)
     xTaskCreatePinnedToCore(Task_I2C_EnvRead,   "Task_I2C_EnvRead",   4096, nullptr, 3,  nullptr, 0);
     xTaskCreatePinnedToCore(Task_ESPNOW_PingTx, "Task_ESPNOW_PingTx", 4096, nullptr, 10, nullptr, 1);
 }

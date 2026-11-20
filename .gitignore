@@ -37,6 +37,15 @@ gateway/runtime/
 *.synctex.gz
 *.toc
 diagrams/_render_all.html
+diagrams_en/_render_all.html
+diagrams_en/all_drawio_full.png
+
+# Exclude legacy Vietnamese-only duplicates (English report & diagrams_en are tracked)
+spec_btl_iot_fall_detection.tex
+spec_btl_iot_fall_detection.pdf
+diagrams/
+graphics/drawio_*.png
+graphics/chapter4_distance_accuracy_chart.png
 
 # OS files
 .DS_Store

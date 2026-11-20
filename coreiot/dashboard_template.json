@@ -34,7 +34,7 @@
         "bundleAlias": "cards",
         "typeAlias": "simple_card",
         "type": "latest",
-        "title": "1. Trạng thái An toàn & Định danh BLE (T03, T04, T09)",
+        "title": "1. Safety Status & BLE Identity (T03, T04, T09)",
         "sizeX": 8,
         "sizeY": 4,
         "row": 0,
@@ -45,11 +45,11 @@
               "type": "entity",
               "entityAliasId": "alias_node2_rx",
               "dataKeys": [
-                {"name": "csi_state", "type": "timeseries", "label": "Trạng thái AI Hợp nhất"},
-                {"name": "fused_conf", "type": "timeseries", "label": "Độ tin cậy Fused AI"},
-                {"name": "ble_authorized", "type": "timeseries", "label": "Xác thực BLE Người nhà"},
-                {"name": "ble_mac", "type": "timeseries", "label": "MAC BLE Beacon"},
-                {"name": "ble_rssi", "type": "timeseries", "label": "Cường độ BLE (dBm)"}
+                {"name": "csi_state", "type": "timeseries", "label": "Fused AI State"},
+                {"name": "fused_conf", "type": "timeseries", "label": "Fused AI Confidence"},
+                {"name": "ble_authorized", "type": "timeseries", "label": "Authorized Resident BLE"},
+                {"name": "ble_mac", "type": "timeseries", "label": "BLE Beacon MAC"},
+                {"name": "ble_rssi", "type": "timeseries", "label": "BLE Signal Strength (dBm)"}
               ]
             }
           ]
@@ -60,7 +60,7 @@
         "bundleAlias": "cards",
         "typeAlias": "simple_card",
         "type": "latest",
-        "title": "2. Cảm biến Môi trường I2C DHT20 & Kênh ESP-NOW (T01, T06)",
+        "title": "2. I2C DHT20 Environment & ESP-NOW Link (T01, T06)",
         "sizeX": 8,
         "sizeY": 4,
         "row": 0,
@@ -71,10 +71,10 @@
               "type": "entity",
               "entityAliasId": "alias_node1_tx",
               "dataKeys": [
-                {"name": "room_temp_c", "type": "timeseries", "label": "Nhiệt độ phòng (°C)", "units": "°C"},
-                {"name": "room_humi_rh", "type": "timeseries", "label": "Độ ẩm tương đối (%RH)", "units": "%"},
-                {"name": "pkt_loss_pct", "type": "timeseries", "label": "Tỷ lệ mất gói ESP-NOW (%)", "units": "%"},
-                {"name": "fw_version", "type": "timeseries", "label": "Phiên bản Firmware OTA"}
+                {"name": "room_temp_c", "type": "timeseries", "label": "Room Temperature (°C)", "units": "°C"},
+                {"name": "room_humi_rh", "type": "timeseries", "label": "Relative Humidity (%RH)", "units": "%"},
+                {"name": "pkt_loss_pct", "type": "timeseries", "label": "ESP-NOW Packet Loss (%)", "units": "%"},
+                {"name": "fw_version", "type": "timeseries", "label": "OTA Firmware Version"}
               ]
             }
           ]
@@ -85,7 +85,7 @@
         "bundleAlias": "charts",
         "typeAlias": "basic_timeseries",
         "type": "timeseries",
-        "title": "3. Đồ thị Năng lượng Sóng CSI & Xác suất AI Đa tầng theo Thời gian thực",
+        "title": "3. Real-Time CSI Motion Energy & Dual-Tier AI Confidence",
         "sizeX": 16,
         "sizeY": 6,
         "row": 4,
@@ -97,7 +97,7 @@
               "type": "entity",
               "entityAliasId": "alias_node2_rx",
               "dataKeys": [
-                {"name": "csi_motion_energy", "type": "timeseries", "label": "Năng lượng Chuyển động CSI"},
+                {"name": "csi_motion_energy", "type": "timeseries", "label": "CSI Motion Energy"},
                 {"name": "edge_conf", "type": "timeseries", "label": "Edge TinyML Conf"},
                 {"name": "gpu_conf", "type": "timeseries", "label": "RTX 5070 GPU Conf"},
                 {"name": "fused_conf", "type": "timeseries", "label": "Fused AI Conf"}
@@ -111,7 +111,7 @@
         "bundleAlias": "gpio_widgets",
         "typeAlias": "basic_gpio_control",
         "type": "rpc",
-        "title": "4. Điều khiển RPC Từ xa: Tắt/Bật Còi & Chế độ Chống Trộm (T08, T11)",
+        "title": "4. Remote RPC Controls: Siren & Intrusion Armed Mode (T08, T11)",
         "sizeX": 8,
         "sizeY": 5,
         "row": 10,
@@ -120,8 +120,8 @@
           "targetDeviceAliasIds": ["alias_node2_rx"],
           "requestTimeout": 2000,
           "switchPanelObjects": [
-            {"name": "Còi Báo động Buzzer (GPIO10)", "method": "setAlarm"},
-            {"name": "Chế độ Bảo vệ Chống Đột nhập", "method": "setSecurityArmed"}
+            {"name": "Buzzer Alarm (GPIO10)", "method": "setAlarm"},
+            {"name": "Intrusion Security Armed Mode", "method": "setSecurityArmed"}
           ]
         }
       },
@@ -130,7 +130,7 @@
         "bundleAlias": "alarm_widgets",
         "typeAlias": "alarms_table",
         "type": "alarm",
-        "title": "5. Nhật ký Cảnh báo Cấp cứu Té ngã & Xâm nhập (T12, T13)",
+        "title": "5. Emergency Fall & Intrusion Alarm Log (T12, T13)",
         "sizeX": 8,
         "sizeY": 5,
         "row": 10,
@@ -140,10 +140,10 @@
             "type": "entity",
             "entityAliasId": "alias_node2_rx",
             "dataKeys": [
-              {"name": "createdTime", "type": "alarm", "label": "Thời gian"},
-              {"name": "type", "type": "alarm", "label": "Loại cảnh báo"},
-              {"name": "severity", "type": "alarm", "label": "Mức độ"},
-              {"name": "status", "type": "alarm", "label": "Trạng thái"}
+              {"name": "createdTime", "type": "alarm", "label": "Timestamp"},
+              {"name": "type", "type": "alarm", "label": "Alarm Type"},
+              {"name": "severity", "type": "alarm", "label": "Severity"},
+              {"name": "status", "type": "alarm", "label": "Status"}
             ]
           }
         }

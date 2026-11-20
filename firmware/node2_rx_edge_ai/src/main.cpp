@@ -1,14 +1,14 @@
 /**
- * @file main.cpp (Node 2 - YoloUNO #2: Tram Thu Radar CSI, BLE, TinyML & Web Server)
- * @brief Ma cong nghe dam nhiem:
- *   - T06 (1.5d): Thu khung tin ESP-NOW 100 Hz tu Node 1 va trich xuat ma tran 64 song mang
- *                 Wi-Fi CSI o tang vat ly (PHY) qua `wifi_csi_rx_cb()` trong IRAM.
- *   - T03 (1.5d): Quet thu dong Bluetooth Low Energy (BLE) tren Core 0 dinh danh chu nha.
- *   - T04 (1.0d): Chay bo loc Hampel + Butterworth bac 4 va suy luan TinyML 1D-CNN INT8
- *                 truc tiep tren ESP32-S3 Core 1 (< 5 ms) phan loai EMPTY/STATIONARY/WALKING/FALL.
- *   - T07 (1.0d): Embedded HTTP Web Server cong 80 (/api/status, /api/config, /api/alarm)
- *                 kem dieu khien coi Buzzer PWM 2.7 kHz (GPIO10), den WS2812B (GPIO18) va nut SOS (GPIO14).
- *   - T14 (2.0d): Ho tro cap nhat Firmware OTA qua CoreIOT voi kiem tra ma bam SHA-256 & Rollback.
+ * @file main.cpp (Node 2 - YoloUNO #2: CSI Radar Receiver, BLE Scanner, TinyML & Web Server)
+ * @brief Assigned technology items:
+ *   - T06 (1.5 pt): Receives 100 Hz ESP-NOW frames from Node 1 and extracts the 64-subcarrier
+ *                   Wi-Fi CSI matrix at the PHY layer via `wifi_csi_rx_cb()` in IRAM.
+ *   - T03 (1.5 pt): Passive Bluetooth Low Energy (BLE) scanning on Core 0 for resident identification.
+ *   - T04 (1.0 pt): Runs causal Hampel + 4th-order Butterworth DSP and INT8 1D-CNN TinyML inference
+ *                   directly on ESP32-S3 Core 1 (< 5 ms) for EMPTY/STATIONARY/WALKING/FALL classification.
+ *   - T07 (1.0 pt): Embedded HTTP Web Server on port 80 (/api/status, /api/config, /api/alarm)
+ *                   with 2.7 kHz PWM Buzzer (GPIO10), WS2812B RGB strip (GPIO18), and SOS button (GPIO14).
+ *   - T14 (2.0 pt): CoreIOT Over-the-Air (OTA) firmware updates with SHA-256 verification & Rollback.
  */
 
 #include <Arduino.h>
@@ -30,7 +30,7 @@
 #include "ble_scanner.h"
 #include "web_server.h"
 
-// Khung du lieu CSI day tu ngat IRAM sang Task_CSI_TinyML tren Core 1
+// CSI frame pushed from IRAM PHY interrupt to Task_CSI_TinyML on Core 1
 typedef struct {
     int64_t timestamp_us;
     int8_t  rssi;
@@ -49,27 +49,27 @@ static volatile uint32_t g_rxPackets      = 0;
 static volatile uint32_t g_missedPackets  = 0;
 static volatile bool     g_sosManualAlarm = false;
 
-// Bo dem cua so truot 200 khung x 52 song mang trong SRAM/PSRAM
+// Sliding window buffer: 200 frames x 52 active subcarriers in SRAM/PSRAM
 static float g_csiRingWindow[200][CSI_ACTIVE_SUBCARRIERS];
 static float g_edgeInputTensor[TINYML_WINDOW_LEN][TINYML_NUM_SUBCARRIERS];
 
 // ============================================================================
-// Dieu khien phan cung Coi Buzzer (GPIO10 PWM 2.7 kHz) & Den WS2812B (GPIO18)
+// Local Alert Hardware Control: PWM Buzzer (GPIO10, 2.7 kHz) & WS2812B (GPIO18)
 // ============================================================================
 static void setLocalAlarmHardware(bool alarmOn, uint8_t csiState) {
     if (alarmOn) {
         tone(NODE2_BUZZER_PIN, NODE2_BUZZER_FREQ_HZ);
         #ifdef RGB_BUILTIN
-        neopixelWrite(NODE2_NEOPIXEL_PIN, 255, 0, 0); // Do ruc: Bao dong khan cap!
+        neopixelWrite(NODE2_NEOPIXEL_PIN, 255, 0, 0); // Solid Red: Critical Emergency Alarm!
         #endif
     } else {
         noTone(NODE2_BUZZER_PIN);
         digitalWrite(NODE2_BUZZER_PIN, LOW);
         #ifdef RGB_BUILTIN
         if (csiState == CSI_STATE_WALKING) {
-            neopixelWrite(NODE2_NEOPIXEL_PIN, 180, 140, 0); // Vang: Co chuyen dong
+            neopixelWrite(NODE2_NEOPIXEL_PIN, 180, 140, 0); // Amber: Active motion detected
         } else {
-            neopixelWrite(NODE2_NEOPIXEL_PIN, 0, 48, 12);   // Xanh la: An toan
+            neopixelWrite(NODE2_NEOPIXEL_PIN, 0, 48, 12);   // Green: Room safe
         }
         #endif
     }
@@ -95,7 +95,7 @@ static void onWebAlarmControl(bool active) {
 }
 
 // ============================================================================
-// Callback thu khung tin ESP-NOW (giai ma nhiet do/do am DHT20 tu Node 1)
+// ESP-NOW Receive Callback (decodes Node 1 I2C DHT20 temperature & humidity)
 // ============================================================================
 static void onEspNowDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
     if (!mac || !incomingData || len < (int)sizeof(csi_ping_packet_t)) return;
@@ -125,7 +125,7 @@ static void onEspNowDataRecv(const uint8_t* mac, const uint8_t* incomingData, in
 }
 
 // ============================================================================
-// Callback tang vat ly (IRAM) trich xuat 128 byte I/Q cua 64 song mang CSI (Doan ma 3.1)
+// PHY-Layer Callback (IRAM) extracting 128-byte I/Q of 64 CSI subcarriers (Listing 3.1)
 // ============================================================================
 static void IRAM_ATTR wifi_csi_rx_cb(void* /*ctx*/, wifi_csi_info_t* info) {
     if (!info || !info->buf || info->len < (int)CSI_RAW_IQ_BYTES) return;
@@ -145,7 +145,7 @@ static void IRAM_ATTR wifi_csi_rx_cb(void* /*ctx*/, wifi_csi_info_t* info) {
 }
 
 // ============================================================================
-// Task_CSI_TinyML tren Core 1: Loc tin hieu + Chay INT8 1D-CNN + Xuat USB-CDC (T04, T08)
+// Task_CSI_TinyML on Core 1: DSP + INT8 1D-CNN Inference + USB-CDC Stream (T04, T08)
 // ============================================================================
 static void Task_CSI_TinyML(void* /*pvParameters*/) {
     size_t framesCollected = 0;
@@ -157,7 +157,7 @@ static void Task_CSI_TinyML(void* /*pvParameters*/) {
             float amps52[CSI_ACTIVE_SUBCARRIERS];
             CsiDspProcessor::iqToActiveAmplitudes(frame.iq_raw, amps52);
 
-            // Dich cua so truot 200 mau
+            // Advance 200-sample sliding window
             if (framesCollected < 200u) {
                 memcpy(g_csiRingWindow[framesCollected], amps52, sizeof(amps52));
                 framesCollected++;
@@ -167,7 +167,7 @@ static void Task_CSI_TinyML(void* /*pvParameters*/) {
             }
             stepCounter++;
 
-            // Moi 20 khung (200 ms @ 100 Hz) khi da du cua so 200 khung: Chay TinyML INT8!
+            // Run INT8 TinyML every 20 frames (200 ms @ 100 Hz) once the 200-frame window is full
             if (framesCollected >= 200u && (stepCounter % 20u) == 0u) {
                 float tempC, humiRh, fallTh;
                 bool secArmed, bleAuth;
@@ -206,7 +206,7 @@ static void Task_CSI_TinyML(void* /*pvParameters*/) {
 
                 setLocalAlarmHardware(currentAlarm, aiRes.predicted_class);
 
-                // Xuat khung JSONL toc do cao qua USB-CDC 921600 bps ve PC Local Gateway (T08, T10)
+                // Stream JSONL telemetry over 921600 bps USB-CDC to PC Local Gateway (T08, T10)
                 Serial.printf(
                     "{\"ts_ms\":%lu,\"edge_state\":\"%s\",\"edge_conf\":%.4f,"
                     "\"edge_probs\":[%.3f,%.3f,%.3f,%.3f],\"infer_ms\":%.2f,"
@@ -238,7 +238,7 @@ static void Task_CSI_TinyML(void* /*pvParameters*/) {
 }
 
 // ============================================================================
-// Task_BLE_Scanner & Nut nhan SOS / RPC tren Core 0 (T03, T07, T08, T14)
+// Task_BLE_And_IO on Core 0: BLE Scanner, SOS Button, Web Server & Downlink RPC (T03, T07, T08, T14)
 // ============================================================================
 static void Task_BLE_And_IO(void* /*pvParameters*/) {
     g_bleScanner.begin();
@@ -249,7 +249,7 @@ static void Task_BLE_And_IO(void* /*pvParameters*/) {
     for (;;) {
         uint32_t now = millis();
 
-        // 1. Xu ly nut nhan SOS / Reset bao dong tren GPIO14 (INPUT_PULLUP)
+        // 1. Handle physical SOS / Alarm Reset button on GPIO14 (INPUT_PULLUP)
         bool isLow = (digitalRead(NODE2_SOS_BTN_PIN) == LOW);
         if (isLow && !btnWasLow) {
             btnPressStartMs = now;
@@ -261,16 +261,16 @@ static void Task_BLE_And_IO(void* /*pvParameters*/) {
             }
         } else if (!isLow && btnWasLow) {
             if ((now - btnPressStartMs) >= 40u && (now - btnPressStartMs) < NODE2_SOS_HOLD_MS) {
-                // Nhan don (< 3 giay) -> Huy bao dong gia tai cho
+                // Short press (< 3 seconds) -> Mute/reset local alarm
                 onWebAlarmControl(false);
             }
             btnWasLow = false;
         }
 
-        // 2. Xu ly HTTP Embedded Web Server (T07)
+        // 2. Service Embedded HTTP Web Server requests (T07)
         g_webServer.handleClient();
 
-        // 3. Nhan lenh RPC chieu ve tu PC Local Gateway qua USB-CDC (T08, T14)
+        // 3. Process downlink RPC commands from PC Local Gateway over USB-CDC (T08, T14)
         while (Serial.available()) {
             String line = Serial.readStringUntil('\n');
             line.trim();
@@ -300,7 +300,7 @@ static void Task_BLE_And_IO(void* /*pvParameters*/) {
             }
         }
 
-        // 4. Quet thu dong BLE moi 1000 ms (T03)
+        // 4. Passive BLE scan every 1000 ms (T03)
         if ((now - lastBleMs) >= BLE_SCAN_INTERVAL_MS) {
             lastBleMs = now;
             int rssiMin;
@@ -323,7 +323,7 @@ static void Task_BLE_And_IO(void* /*pvParameters*/) {
 }
 
 // ============================================================================
-// Khoi dong Node 2
+// Node 2 Initialization
 // ============================================================================
 void setup() {
     Serial.begin(SERIAL_CSI_BAUDRATE);
@@ -334,7 +334,7 @@ void setup() {
     digitalWrite(NODE2_BUZZER_PIN, LOW);
     pinMode(NODE2_SOS_BTN_PIN, INPUT_PULLUP);
 
-    // Khoi tao trang thai chia se mac dinh
+    // Initialize default shared runtime state
     g_sharedStatus.csi_state      = CSI_STATE_EMPTY;
     g_sharedStatus.temp_c         = 27.5f;
     g_sharedStatus.humi_rh        = 65.0f;
@@ -346,7 +346,7 @@ void setup() {
 
     xQueueCSI = xQueueCreate(64, sizeof(csi_frame_item_t));
 
-    // Khoi tao Wi-Fi Station + SoftAP du phong de Embedded Web Server (T07) luon truy cap duoc!
+    // Start Wi-Fi Station + fallback SoftAP so the Embedded Web Server (T07) is always reachable
     WiFi.mode(WIFI_AP_STA);
     WiFi.softAP("YoloUNO_CSI_Node2", nullptr, CSI_WIFI_CHANNEL);
     if (strlen(WIFI_SSID) > 0 && strcmp(WIFI_SSID, "YOUR_WIFI_SSID") != 0) {
@@ -357,7 +357,7 @@ void setup() {
     esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
     esp_wifi_set_channel(CSI_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
 
-    // Kich hoat bo thu Wi-Fi CSI tang vat ly (LLTF + HT-LTF) tren ESP32-S3
+    // Enable ESP32-S3 PHY-layer Wi-Fi CSI capture (LLTF + HT-LTF)
     wifi_csi_config_t csiCfg{};
     csiCfg.lltf_en           = true;
     csiCfg.htltf_en          = true;

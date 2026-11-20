@@ -1,7 +1,7 @@
 """
 Physics-Based IEEE 802.11n HT20 (2.437 GHz, Ch. 6) Multipath Wi-Fi CSI Dataset Generator (`T05`).
 
-Models the physical OFDM channel response in Eq. (2.1) of `spec_btl_iot_fall_detection.tex`:
+Models the physical OFDM channel response in Eq. (2.1) of `HK261_Group01_IoTReport.tex`:
     H_k(t) = H_static,k(T, RH) + sum_{p=1}^{P} alpha_p(t) * exp(-j * 2*pi * f_k * d_p(t) / c) + n_k(t)
 
 Generates realistic 2.0-second windows (200 frames @ 100 Hz, 64 subcarriers -> 128-byte int8 I/Q)

@@ -2,7 +2,7 @@
 Chapter 4 Quantitative Evaluation Protocol Runner (`50 trials` per scenario & distance).
 
 Evaluates the entire Edge TinyML + RTX 5070 GPU Spectrogram 2D-CNN + BLE + RuleChain pipeline
-against every quantitative target in Table 4.1 of `spec_btl_iot_fall_detection.tex`:
+against every quantitative target in Table 4.1 of `HK261_Group01_IoTReport.tex`:
   - Scenario S1: Distance & Obstacle sweep (`1.0m`, `2.0m`, `3.0m`, `NLOS` behind thin wall, 50 trials/class)
   - Scenario S2: BLE Authorization & Anti-False-Alarm (`WALKING` with BLE vs without BLE, plus `sit_fast` hard negatives)
   - Scenario S3/S4: Latency benchmarks (Edge TinyML inference, GPU ONNX inference, RPC round-trip)

@@ -3,8 +3,8 @@
 
 /**
  * @file ota_updater.h
- * @brief Trinh cap nhat Firmware tu xa qua mang (OTA - Ma cong nghe T14, 2.0 diem)
- *        Tich hop voi CoreIOT OTA Repository (HTTP Chunk Download + Kiem tra bam SHA-256 + Rollback).
+ * @brief Over-the-Air (OTA) Firmware Updater (Technology Item T14, 2.0 points)
+ *        Integrated with CoreIOT OTA Repository (HTTP Chunk Streaming + SHA-256 Verification + Rollback).
  */
 
 #include <Arduino.h>
@@ -17,8 +17,8 @@
 class CoreIOTOtaUpdater {
 public:
     /**
-     * @brief Xac nhan phan vung OTA hien tai la hop le sau khi khoi dong thanh cong
-     *        (Neu firmware moi bi treo truoc buoc nay, Bootloader tu dong Rollback ve ban cu).
+     * @brief Mark the currently running OTA partition as valid after a clean boot.
+     *        (If the new firmware crashes before this point, the bootloader automatically rolls back.)
      */
     static void confirmBootPartitionValid() {
         const esp_partition_t* running = esp_ota_get_running_partition();
@@ -32,16 +32,16 @@ public:
     }
 
     /**
-     * @brief Tai firmware .bin theo tung chunk 4096-byte tu CoreIOT HTTP API,
-     *        kiem tra toan ven SHA-256 va nap sang phan vung ota_0 / ota_1.
+     * @brief Stream a firmware .bin image in 4096-byte chunks from the CoreIOT HTTP API,
+     *        verify SHA-256 integrity, and flash to the inactive ota_0 / ota_1 slot.
      *
-     * @param host          Dia chi may chu CoreIOT (vd: "app.coreiot.io")
-     * @param port          Cong HTTP (80 hoac 8080)
-     * @param deviceToken   Access Token cua Node tren CoreIOT
-     * @param fwTitle       Ten goi firmware (fw_title)
-     * @param targetVersion Phien ban can cap nhat (vd: "1.1.0")
-     * @param expectedSha256 Chuoi hex 64 ky tu SHA-256 (bo trong neu khong kiem tra)
-     * @return true neu cap nhat thanh cong (mach se tu khoi dong lai)
+     * @param host           CoreIOT server hostname (e.g., "app.coreiot.io")
+     * @param port           HTTP port (80 or 8080)
+     * @param deviceToken    Device Access Token on CoreIOT
+     * @param fwTitle        Firmware package title (`fw_title`)
+     * @param targetVersion  Target firmware version (e.g., "1.1.0")
+     * @param expectedSha256 64-character hex SHA-256 digest (empty to skip verification)
+     * @return true on successful flash (device immediately reboots)
      */
     static bool performHttpOtaUpdate(
         const char* host,
@@ -56,7 +56,7 @@ public:
             return false;
         }
 
-        // URL chuan cua ThingsBoard / CoreIOT HTTP Firmware API:
+        // Standard ThingsBoard / CoreIOT HTTP Firmware API URL:
         // GET http://<host>:<port>/api/v1/<ACCESS_TOKEN>/firmware?title=<fw_title>&version=<fw_version>
         String url = String("http://") + host + ":" + String(port) +
                      "/api/v1/" + String(deviceToken) +

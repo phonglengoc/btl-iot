@@ -2,7 +2,7 @@
 Shared Digital Signal Processing (DSP) pipeline for Wi-Fi CSI Fall & Intrusion Detection.
 Matches 100% with the C++ firmware implementation in `firmware/node2_rx_edge_ai/include/csi_dsp.h`.
 
-Pipeline stages (Section 3.5.1 & Table 3.3 of `spec_btl_iot_fall_detection.tex`):
+Pipeline stages (Section 3.5.1 & Table 3.3 of `HK261_Group01_IoTReport.tex`):
   1. Extract 52 active OFDM subcarriers from 64-subcarrier (128-byte I/Q) LLTF buffer:
        |H_k(t)| = sqrt(I_k^2 + Q_k^2)
   2. Environmental baseline calibration using Node 1's I2C DHT20 temperature & humidity.
@@ -163,7 +163,7 @@ def extract_gateway_stft_spectrogram(
 ) -> np.ndarray:
     """
     Build a 3-channel 64x64 Time-Frequency-Subcarrier representation S_gw in R^(3, 64, 64)
-    for the RTX 5070 GPU 2D-CNN (Table 3.3 of `spec_btl_iot_fall_detection.tex`):
+    for the RTX 5070 GPU 2D-CNN (Table 3.3 of `HK261_Group01_IoTReport.tex`):
       - Channel 0: Log-power STFT Spectrogram averaged across lower OFDM subcarriers (k=0..25)
       - Channel 1: Log-power STFT Spectrogram averaged across upper OFDM subcarriers (k=26..51)
       - Channel 2: Resampled Subcarrier-Time Differential Energy Map (52 subcarriers x time -> 64x64)

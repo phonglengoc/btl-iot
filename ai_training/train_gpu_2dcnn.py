@@ -1,7 +1,7 @@
 """
 Gateway GPU STFT Spectrogram 2D-CNN Training, ONNX Export & CUDA Latency Benchmark (`T09`, `N04`).
 
-Architecture (matches Table 3.3 of `spec_btl_iot_fall_detection.tex`):
+Architecture (matches Table 3.3 of `HK261_Group01_IoTReport.tex`):
   Input S_gw: (Batch, 3, 64, 64) STFT Spectrogram
     1. Conv2D(3 -> 32, 3x3, pad=1) + BatchNorm2D + ReLU + MaxPool2D(2)   -> (32, 32, 32)
     2. Conv2D(32 -> 64, 3x3, pad=1) + BatchNorm2D + ReLU + MaxPool2D(2)  -> (64, 16, 16)

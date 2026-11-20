@@ -3,14 +3,14 @@
 
 /**
  * @file ble_scanner.h
- * @brief Bo quet thu dong Bluetooth Low Energy (BLE 5.0 Passive Scanner - Ma cong nghe T03, 1.5 diem).
+ * @brief Passive Bluetooth Low Energy (BLE 5.0) Resident Scanner (Technology Item T03, 1.5 points).
  *
- * Chuc nang (Muc 2.3.1 & 3.2.2 trong `spec_btl_iot_fall_detection.tex`):
- *   - Mo cua so quet thu dong ngan (80 ms moi 1000 ms tren Core 0) de khong gay xung dot
- *     bo chia se ang-ten Wi-Fi/BLE (Coexistence Arbitrator) voi luong thu CSI 100 Hz.
- *   - Doi chieu dia chi MAC quang ba voi danh sach tin cay `BLE_AUTHORIZED_MACS`.
- *   - Neu ton tai the BLE hop le co `RSSI >= bleRssiMin` (mac dinh -75 dBm), xac nhan
- *     nguoi trong phong la thanh vien gia dinh (`ble_authorized = true`).
+ * Functionality (Sections 2.3.1 & 3.2.2 in `HK261_Group01_IoTReport.tex`):
+ *   - Opens short passive scan windows (80 ms every 1000 ms on Core 0) to minimize contention
+ *     with the Wi-Fi/BLE RF Coexistence Arbitrator while receiving 100 Hz CSI frames.
+ *   - Matches advertised MAC addresses against the trusted `BLE_AUTHORIZED_MACS` whitelist.
+ *   - If an authorized BLE tag is detected with `RSSI >= bleRssiMin` (default -75 dBm),
+ *     confirms resident presence (`ble_authorized = true`).
  */
 
 #include <Arduino.h>
@@ -40,7 +40,7 @@ public:
         BLEDevice::init("YoloUNO_CSI_Radar_Node2");
         m_pScan = BLEDevice::getScan();
         if (m_pScan) {
-            m_pScan->setActiveScan(false); // Passive scan tiet kiem thoi gian chia se ang-ten RF
+            m_pScan->setActiveScan(false); // Passive scan reduces RF antenna coexistence overhead
             m_pScan->setInterval(160);     // 160 * 0.625 ms = 100 ms
             m_pScan->setWindow(80);        //  80 * 0.625 ms =  50 ms
         }
@@ -50,12 +50,12 @@ public:
     }
 
     /**
-     * @brief Quet nhanh cac goi BLE Advertising va cap nhat trang thai dinh danh chu nha
+     * @brief Perform a passive BLE advertising scan and update resident authorization state
      */
     void scanOnce(int rssiMinThresholdDbm) {
         if (!m_pScan) return;
 
-        // Quet nhanh 1 giay (blocking tren Task_BLE_Scanner rieng o Core 0, khong anh huong Core 1)
+        // 1-second scan (runs on dedicated Core 0 task without stalling Core 1 CSI DSP)
         BLEScanResults foundDevices = m_pScan->start(1, false);
         int count = foundDevices.getCount();
 
@@ -92,7 +92,7 @@ public:
             m_state.best_mac[sizeof(m_state.best_mac) - 1] = '\0';
             m_state.last_seen_ms = now;
         } else {
-            // Duy tri trang thai Grace Period 5 giay tranh nhap nhay RSSI tuc thoi
+            // Maintain a 5-second grace period to prevent transient RSSI dropouts
             if ((now - m_state.last_seen_ms) > 5000u) {
                 m_state.authorized_present = false;
                 m_state.best_rssi = strongestRssi;

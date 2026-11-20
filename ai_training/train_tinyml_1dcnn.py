@@ -1,7 +1,7 @@
 """
 Edge TinyML 1D-CNN Training, INT8 Quantization & ESP32-S3 C++ Header Exporter (`T04`, `T05`).
 
-Architecture (matches Table 3.3 of `spec_btl_iot_fall_detection.tex`):
+Architecture (matches Table 3.3 of `HK261_Group01_IoTReport.tex`):
   Input X_edge: (Batch, 100, 16) -> transposed to (Batch, 16, 100) for Conv1d
     1. Conv1D(16 -> 16, kernel_size=5, padding=2) + ReLU
     2. MaxPool1D(kernel_size=2, stride=2) -> length 50
