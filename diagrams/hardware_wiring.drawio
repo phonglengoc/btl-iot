@@ -1,0 +1,105 @@
+<mxfile host="drawio" version="26.0.0">
+  <diagram id="hw-wiring" name="Hardware-Wiring">
+    <mxGraphModel dx="1600" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="760" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        
+        <mxCell id="node1_box" value="CỤM PHẦN CỨNG NODE 1: TRẠM PHÁT XUNG CSI &amp; CẢM BIẾN MÔI TRƯỜNG (TX NODE)" style="swimlane;startSize=36;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="680" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="pwr1" value="&lt;b&gt;Nguồn Cấp USB Type-C (5V DC / 1A)&lt;/b&gt;&#10;Qua IC ổn áp AMS1117-3.3V cấp rail 3V3 &amp; GND ổn định" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="30" y="60" width="290" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mcu1" value="&lt;b&gt;Mạch YoloUNO #1 (ESP32-S3-WROOM-1)&lt;/b&gt;&#10;[Vi điều khiển Trung tâm Node Tx]&#10;────────────────────────&#10;• Rail Nguồn: 5V, 3V3, GND&#10;• GPIO11 (I2C_SDA): Truyền dữ liệu I2C&#10;• GPIO12 (I2C_SCL): Xung nhịp I2C (100 kHz)&#10;• GPIO48 (LED_PIN): Đèn RGB Onboard&#10;• Anten PCB 2.4 GHz: Phát gói ESP-NOW 100 Hz&#10;  (Chuẩn 802.11n HT20, Kênh 6 cố định)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2;align=left;spacingLeft=12;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="30" y="190" width="290" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="led1" value="&lt;b&gt;LED Trạng thái Phát Sóng (Onboard)&lt;/b&gt;&#10;WS2812B RGB LED tích hợp tại chân GPIO48&#10;Nháy Xanh lá: Đang phát xung CSI ổn định" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="30" y="530" width="290" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="dht20" value="&lt;b&gt;Cảm biến Nhiệt độ &amp; Độ ẩm DHT20&lt;/b&gt;&#10;[Giao tiếp I2C — Địa chỉ 0x38 — Mã T01]&#10;──────────────────────&#10;• Chân 1 (VDD) ← Rail 3V3 (YoloUNO #1)&#10;• Chân 2 (SDA) ↔ GPIO11 (Kéo lên 4.7 kΩ)&#10;• Chân 3 (GND) ← Rail GND&#10;• Chân 4 (SCL) ← GPIO12 (Kéo lên 4.7 kΩ)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="410" y="190" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="ble_tag" value="&lt;b&gt;Thiết bị Định danh BLE Beacon&lt;/b&gt;&#10;[iBeacon Tag / Smartphone — Mã T03]&#10;──────────────────────&#10;• Nguồn: Pin cúc áo CR2032 (3.0V)&#10;• Chu kỳ Quảng bá (Adv): 200 ms&#10;• Phát khung MAC + UUID + RSSI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="410" y="430" width="240" height="160" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="node2_box" value="CỤM PHẦN CỨNG NODE 2: TRẠM THU RADAR CSI, QUÉT BLE &amp; EDGE AI (RX NODE)" style="swimlane;startSize=36;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="40" width="680" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="pc_usb" value="&lt;b&gt;Cổng USB Type-C nối PC Local Gateway [T08]&lt;/b&gt;&#10;Cấp nguồn 5V DC + Truyền khung CSI qua USB-CDC (921600 bps)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="30" y="60" width="290" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mcu2" value="&lt;b&gt;Mạch YoloUNO #2 (ESP32-S3-WROOM-1)&lt;/b&gt;&#10;[Vi điều khiển Edge AI &amp; Radar Node Rx]&#10;────────────────────────&#10;• GPIO19/20 (USB D-/D+): Cổng Serial tốc độ cao&#10;• GPIO10 (PWM_OUT): Kích hoạt Còi Buzzer&#10;• GPIO18 (DATA_OUT): Điều khiển LED WS2812B&#10;• GPIO14 (INPUT_PULLUP): Nút nhấn SOS / Reset&#10;• Anten PCB 2.4 GHz: Thu gói CSI &amp; Quét BLE&#10;• 8MB Octal PSRAM + 16MB Flash: Chạy TinyML" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=2;align=left;spacingLeft=12;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="30" y="190" width="290" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="web2" value="&lt;b&gt;Embedded Web Server Nội bộ [T07]&lt;/b&gt;&#10;Chạy dịch vụ HTTP bất đồng bộ tại IP nội bộ&#10;Cấu hình ngưỡng nhạy Fall &amp; Kiểm thử Còi/Đèn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="30" y="540" width="290" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="buzzer" value="&lt;b&gt;Module Còi Báo động KY-012&lt;/b&gt;&#10;[Active/PWM Buzzer + Transistor S8050]&#10;──────────────────────&#10;• Chân SIG ← GPIO10 (Xung 2.7 kHz)&#10;• Chân VCC ← Rail 5V (VBUS)&#10;• Chân GND ← Rail GND" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="410" y="80" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="neopixel" value="&lt;b&gt;Module Đèn Cảnh báo WS2812B RGB&lt;/b&gt;&#10;[Thanh 4 LED RGB Địa chỉ hóa]&#10;──────────────────────&#10;• Chân DIN ← GPIO18 (Qua R = 330 Ω)&#10;• Chân VCC ← Rail 5V (Tụ lọc 100 μF)&#10;• Chân GND ← Rail GND" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="410" y="280" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="sos_btn" value="&lt;b&gt;Module Nút nhấn SOS / Hủy Cảnh báo&lt;/b&gt;&#10;[Tactile Push Button + Tụ chống dội 100nF]&#10;──────────────────────&#10;• Chân OUT → GPIO14 (Pull-up nội 45 kΩ)&#10;• Chân GND ← Rail GND (Nhấn = LOW)&#10;• Nhấn đơn: Tắt còi | Giữ 3s: Gửi SOS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="410" y="480" width="240" height="150" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="w_pwr1_mcu1" value="5V / 3V3 / GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#d6b656;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="pwr1" target="mcu1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_mcu1_led1" value="GPIO48 (Data)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu1" target="led1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_mcu1_dht20" value="3V3, GND&#10;SDA(11), SCL(12)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;startArrow=block;endSize=8;startSize=8;strokeColor=#82b366;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu1" target="dht20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="w_rf_csi" value="Sóng ESP-NOW 2.4 GHz&#10;(100 Hz CSI Multipath)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.7407;exitDx=0;exitDy=0;entryX=0;entryY=0.6897;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeWidth=2;strokeColor=#0066cc;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="mcu1" target="mcu2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_rf_ble" value="Quảng bá BLE&#10;(RSSI &amp; MAC)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.8;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeWidth=2;strokeColor=#d6b656;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="ble_tag" target="mcu2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="550" />
+              <mxPoint x="780" y="462" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="w_usb_mcu2" value="5V / GND + USB-CDC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;startArrow=block;endSize=8;startSize=8;strokeColor=#d79b00;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="pc_usb" target="mcu2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_mcu2_web2" value="Wi-Fi SoftAP / STA" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;startArrow=block;endSize=8;startSize=8;strokeColor=#6c8ebf;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu2" target="web2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_mcu2_buz" value="GPIO10 + 5V/GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.2;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#b85450;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu2" target="buzzer">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="288" />
+              <mxPoint x="1200" y="195" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="w_mcu2_neo" value="GPIO18 + 5V/GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.55;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#b85450;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu2" target="neopixel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_btn_mcu2" value="GPIO14 + GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.85;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#9673a6;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="sos_btn" target="mcu2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="595" />
+              <mxPoint x="1200" y="476" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

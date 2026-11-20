@@ -1,0 +1,84 @@
+<mxfile host="app.diagrams.net" modified="2026-11-15T11:18:00.000Z" agent="Antigravity" version="24.7.17">
+  <diagram id="coreiot_rc" name="CoreIOT RuleChain Graph">
+    <mxGraphModel dx="1480" dy="760" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1520" pageHeight="540" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="rc_frame" value="CoreIOT Smart Automation RuleChain Graph — CSI_Fall_And_Intrusion_Smart_RuleChain (T12, T13, T15)" style="swimlane;startSize=34;fillColor=#f8fafc;strokeColor=#334155;fontStyle=1;fontSize=14;rounded=1;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="25" y="25" width="1470" height="485" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_in" value="Input Node&#10;v1/gateway/telemetry&#10;(JSON from PC Gateway)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="30" y="205" width="165" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_switch" value="1. Message Type Switch&#10;(TbMsgTypeSwitchNode)&#10;Route Telemetry / RPC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="250" y="205" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_ts" value="2. Save CSI &amp; Env Telemetry&#10;(TbMsgTimeseriesNode)&#10;Persist DB for Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="485" y="205" width="190" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_enrich" value="3. Enrich Fused AI (TBEL/JS)&#10;fused = 0.4*edge + 0.6*gpu&#10;Tag FALL / INTRUSION" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#7e22ce;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="735" y="205" width="205" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_filter" value="4. Is Emergency&#10;Or Intrusion?&#10;(TbJsFilterNode)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fef08a;strokeColor=#ca8a04;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="995" y="190" width="155" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_alarm" value="5. Create CoreIOT Alarm&#10;(TbCreateAlarmNode)&#10;CRITICAL_FALL_EMERGENCY /&#10;MAJOR_INTRUSION_ALERT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="1230" y="55" width="215" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_tg" value="6. Send Telegram Alert (T13)&#10;(TbRestApiCallNode)&#10;POST api.telegram.org/&#10;bot&lt;TOKEN&gt;/sendMessage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="1230" y="198" width="215" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_rpc" value="7. Latch Local Alarm via RPC&#10;(TbSendRPCRequestNode)&#10;v1/gateway/rpc -&gt; setAlarm(true)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffedd5;strokeColor=#ea580c;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="1230" y="345" width="215" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_safe" value="NORMAL State&#10;(No Alarm Dispatched,&#10;Update Live Charts Only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontStyle=1;fontSize=11;" vertex="1" parent="rc_frame">
+          <mxGeometry x="990" y="365" width="165" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rc_e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#334155;" edge="1" parent="rc_frame" source="n_in" target="n_switch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rc_e2" value="Post telemetry" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#1d4ed8;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="rc_frame" source="n_switch" target="n_ts">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rc_e3" value="Success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#7e22ce;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="rc_frame" source="n_ts" target="n_enrich">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rc_e4" value="Success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#ca8a04;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="rc_frame" source="n_enrich" target="n_filter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rc_e5" value="True" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=0.5;exitY=0;entryX=0;entryY=0.5;strokeWidth=2.2;strokeColor=#dc2626;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="rc_frame" source="n_filter" target="n_alarm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1073" y="98" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rc_e6" value="True" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2.2;strokeColor=#0284c7;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="rc_frame" source="n_filter" target="n_tg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rc_e7" value="True" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.75;entryX=0;entryY=0.5;strokeWidth=2.2;strokeColor=#ea580c;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="rc_frame" source="n_filter" target="n_rpc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1185" y="273" />
+              <mxPoint x="1185" y="388" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rc_e8" value="False" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=1.8;dashed=1;strokeColor=#16a34a;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="rc_frame" source="n_filter" target="n_safe">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

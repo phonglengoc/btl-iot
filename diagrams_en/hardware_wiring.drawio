@@ -1,0 +1,100 @@
+<mxfile host="drawio" version="26.0.0">
+  <diagram id="hw-wiring" name="Hardware-Wiring">
+    <mxGraphModel dx="1600" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="760" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="node1_box" value="HARDWARE NODE 1: CSI TRANSMITTER &amp; ENVIRONMENTAL SENSOR (TX NODE)" style="swimlane;startSize=36;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="680" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="pwr1" value="&lt;b&gt;USB Type-C Power Supply (5V DC / 1A)&lt;/b&gt;&#10;Onboard AMS1117-3.3V LDO regulating clean 3V3 &amp; GND rails" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="30" y="60" width="290" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mcu1" value="&lt;b&gt;YoloUNO #1 Board (ESP32-S3-WROOM-1)&lt;/b&gt;&#10;[Tx Node Central Microcontroller]&#10;────────────────────────&#10;• Power Rails: 5V, 3V3, GND&#10;• GPIO11 (I2C_SDA): Bidirectional I2C Data&#10;• GPIO12 (I2C_SCL): 100 kHz I2C Clock&#10;• GPIO48 (LED_PIN): Onboard Status RGB LED&#10;• 2.4 GHz PCB Antenna: 100 Hz ESP-NOW Tx&#10;  (802.11n HT20, Fixed Channel 6)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=2;align=left;spacingLeft=12;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="30" y="190" width="290" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="led1" value="&lt;b&gt;Onboard Tx Heartbeat LED&lt;/b&gt;&#10;WS2812B RGB LED wired to GPIO48&#10;Blinks Green: 100 Hz CSI Beacon Active" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="30" y="530" width="290" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="dht20" value="&lt;b&gt;DHT20 Temp &amp; Humidity Sensor&lt;/b&gt;&#10;[I2C Interface — Addr 0x38 — Code T01]&#10;──────────────────────&#10;• Pin 1 (VDD) ← 3V3 Rail (YoloUNO #1)&#10;• Pin 2 (SDA) ↔ GPIO11 (4.7 kΩ Pull-up)&#10;• Pin 3 (GND) ← GND Rail&#10;• Pin 4 (SCL) ← GPIO12 (4.7 kΩ Pull-up)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="410" y="190" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="ble_tag" value="&lt;b&gt;BLE Identity Tag / Beacon&lt;/b&gt;&#10;[iBeacon Tag / Smartphone — Code T03]&#10;──────────────────────&#10;• Power: CR2032 Coin Cell (3.0V)&#10;• Advertising Interval: 200 ms&#10;• Broadcasts MAC + UUID + TxPower" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node1_box">
+          <mxGeometry x="410" y="430" width="240" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="node2_box" value="HARDWARE NODE 2: CSI RADAR RECEIVER, BLE SCANNER &amp; EDGE AI (RX NODE)" style="swimlane;startSize=36;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="40" width="680" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="pc_usb" value="&lt;b&gt;USB Type-C Link to PC Local Gateway [T08]&lt;/b&gt;&#10;5V DC Power + High-Speed CSI JSONL Stream via USB-CDC (921600 bps)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="30" y="60" width="290" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mcu2" value="&lt;b&gt;YoloUNO #2 Board (ESP32-S3-WROOM-1)&lt;/b&gt;&#10;[Edge AI &amp; CSI Radar Rx Microcontroller]&#10;────────────────────────&#10;• GPIO19/20 (USB D-/D+): Native USB-CDC&#10;• GPIO10 (PWM_OUT): Alarm Buzzer Driver&#10;• GPIO18 (DATA_OUT): WS2812B RGB Strip&#10;• GPIO14 (INPUT_PULLUP): SOS / Silence Btn&#10;• 2.4 GHz PCB Antenna: CSI Rx &amp; BLE Scan&#10;• 8MB Octal PSRAM + Flash: INT8 TinyML" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=2;align=left;spacingLeft=12;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="30" y="190" width="290" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="web2" value="&lt;b&gt;On-Device Embedded Web Server [T07]&lt;/b&gt;&#10;HTTP Port 80 Service on Local Wi-Fi IP&#10;Tune Fall Threshold &amp; Test Siren/LED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="30" y="540" width="290" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="buzzer" value="&lt;b&gt;KY-012 Piezo Alarm Buzzer&lt;/b&gt;&#10;[PWM Buzzer + S8050 NPN Driver]&#10;──────────────────────&#10;• Pin SIG ← GPIO10 (2.7 kHz PWM)&#10;• Pin VCC ← 5V Rail (VBUS)&#10;• Pin GND ← GND Rail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="410" y="80" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="neopixel" value="&lt;b&gt;WS2812B Addressable RGB Strip&lt;/b&gt;&#10;[4-LED Visual Status Bar]&#10;──────────────────────&#10;• Pin DIN ← GPIO18 (via 330 Ω Res.)&#10;• Pin VCC ← 5V Rail (100 μF Cap)&#10;• Pin GND ← GND Rail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="410" y="280" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="sos_btn" value="&lt;b&gt;SOS / Alarm Cancel Push-Button&lt;/b&gt;&#10;[Tactile Switch + 100 nF Debounce]&#10;──────────────────────&#10;• Pin OUT → GPIO14 (45 kΩ Pull-up)&#10;• Pin GND ← GND Rail (Active LOW)&#10;• &lt;3s Press: Silence | &gt;=3s: SOS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="node2_box">
+          <mxGeometry x="410" y="480" width="240" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w_pwr1_mcu1" value="5V / 3V3 / GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#d6b656;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="pwr1" target="mcu1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_mcu1_led1" value="GPIO48 (Data)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu1" target="led1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_mcu1_dht20" value="3V3, GND&#10;SDA(11), SCL(12)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;startArrow=block;endSize=8;startSize=8;strokeColor=#82b366;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu1" target="dht20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w_rf_csi" value="2.4 GHz ESP-NOW Link&#10;(100 Hz CSI Multipath)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.7407;exitDx=0;exitDy=0;entryX=0;entryY=0.6897;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeWidth=2;strokeColor=#0066cc;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="mcu1" target="mcu2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_rf_ble" value="BLE Advertising&#10;(RSSI &amp; MAC)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.8;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeWidth=2;strokeColor=#d6b656;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="ble_tag" target="mcu2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="550" />
+              <mxPoint x="780" y="462" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="w_usb_mcu2" value="5V / GND + USB-CDC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;startArrow=block;endSize=8;startSize=8;strokeColor=#d79b00;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="pc_usb" target="mcu2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_mcu2_web2" value="Wi-Fi STA / SoftAP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;startArrow=block;endSize=8;startSize=8;strokeColor=#6c8ebf;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu2" target="web2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_mcu2_buz" value="GPIO10 + 5V/GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.2;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#b85450;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu2" target="buzzer">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="288" />
+              <mxPoint x="1200" y="195" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="w_mcu2_neo" value="GPIO18 + 5V/GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.55;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#b85450;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="mcu2" target="neopixel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w_btn_mcu2" value="GPIO14 + GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.85;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeColor=#9673a6;strokeWidth=2;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="sos_btn" target="mcu2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="595" />
+              <mxPoint x="1200" y="476" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

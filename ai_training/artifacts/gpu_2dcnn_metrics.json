@@ -1,0 +1,101 @@
+{
+  "gpu_device": "NVIDIA GeForce RTX 5070 Laptop GPU",
+  "pytorch_version": "2.11.0+cu128",
+  "onnxruntime_version": "1.23.2",
+  "train_time_sec": 4.805,
+  "onnx_size_kb": 382.5,
+  "gpu_accuracy": 0.9968,
+  "gpu_macro_f1": 0.9968,
+  "gpu_fall_f1": 1.0,
+  "two_stage_fusion": {
+    "fused_accuracy": 0.9968,
+    "fused_macro_f1": 0.9968,
+    "fused_fall_f1": 1.0
+  },
+  "latency_benchmark": {
+    "available_providers": [
+      "TensorrtExecutionProvider",
+      "CUDAExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "cpu": {
+      "active_provider": "CPUExecutionProvider",
+      "single_mean_ms": 0.145,
+      "single_p95_ms": 0.169,
+      "batch16_per_sample_ms": 0.084
+    },
+    "cuda_rtx5070": {
+      "active_provider": "CUDAExecutionProvider",
+      "single_mean_ms": 0.313,
+      "single_p95_ms": 0.379,
+      "batch16_per_sample_ms": 0.03
+    },
+    "speedup_single_x": 0.46,
+    "speedup_batch16_x": 2.8
+  },
+  "confusion_matrix": [
+    [
+      76,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      77,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      77,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      77
+    ]
+  ],
+  "classification_report": {
+    "EMPTY": {
+      "precision": 1.0,
+      "recall": 0.987012987012987,
+      "f1-score": 0.9934640522875817,
+      "support": 77.0
+    },
+    "STATIONARY": {
+      "precision": 0.9871794871794872,
+      "recall": 1.0,
+      "f1-score": 0.9935483870967742,
+      "support": 77.0
+    },
+    "WALKING": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 77.0
+    },
+    "FALL": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 77.0
+    },
+    "accuracy": 0.9967532467532467,
+    "macro avg": {
+      "precision": 0.9967948717948718,
+      "recall": 0.9967532467532467,
+      "f1-score": 0.996753109846089,
+      "support": 308.0
+    },
+    "weighted avg": {
+      "precision": 0.9967948717948717,
+      "recall": 0.9967532467532467,
+      "f1-score": 0.9967531098460889,
+      "support": 308.0
+    }
+  }
+}

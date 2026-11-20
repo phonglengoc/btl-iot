@@ -1,0 +1,50 @@
+{
+  "gpu_provider": "CUDAExecutionProvider",
+  "gpu_device": "NVIDIA GeForce RTX 5070 Laptop GPU",
+  "total_s1_windows_evaluated": 800,
+  "overall_edge_tinyml_accuracy_pct": 96.88,
+  "overall_fused_accuracy_pct": 99.5,
+  "overall_fall_precision_pct": 100.0,
+  "overall_fall_recall_pct": 100.0,
+  "overall_fall_f1_pct": 100.0,
+  "scenario_s1_by_distance": {
+    "LOS_1.0m": {
+      "trials_total": 200,
+      "edge_acc_pct": 97.5,
+      "gpu_acc_pct": 99.5,
+      "fused_acc_pct": 100.0,
+      "fused_fall_f1_pct": 100.0
+    },
+    "LOS_2.0m": {
+      "trials_total": 200,
+      "edge_acc_pct": 97.0,
+      "gpu_acc_pct": 99.5,
+      "fused_acc_pct": 99.5,
+      "fused_fall_f1_pct": 100.0
+    },
+    "LOS_3.0m": {
+      "trials_total": 200,
+      "edge_acc_pct": 97.0,
+      "gpu_acc_pct": 99.5,
+      "fused_acc_pct": 99.0,
+      "fused_fall_f1_pct": 100.0
+    },
+    "NLOS_2.5m_Wall": {
+      "trials_total": 200,
+      "edge_acc_pct": 96.0,
+      "gpu_acc_pct": 99.0,
+      "fused_acc_pct": 99.5,
+      "fused_fall_f1_pct": 100.0
+    }
+  },
+  "scenario_s2_sit_fast_specificity_pct": 100.0,
+  "scenario_s2_ble_family_safe_rate_pct": 100.0,
+  "scenario_s2_ble_intruder_detection_pct": 100.0,
+  "gateway_dsp_mean_ms": 9.055,
+  "gateway_gpu_infer_mean_ms": 1.153,
+  "targets_check": {
+    "tinyml_acc_gt_88pct": true,
+    "fused_fall_f1_gt_92pct": true,
+    "gpu_infer_lt_10ms": true
+  }
+}

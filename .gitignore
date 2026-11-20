@@ -1,0 +1,43 @@
+# =========================================================================
+# Security: NEVER commit real Wi-Fi credentials, CoreIOT tokens, or API keys
+# =========================================================================
+.env
+firmware/include/config.h
+firmware/*/include/config.h
+gateway/config.yaml
+
+# Python virtual environments & caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# PlatformIO / ESP-IDF build artifacts
+.pio/
+firmware/**/.pio/
+firmware/**/build/
+*.elf
+*.map
+
+# Runtime state, logs & temporary snapshots
+gateway/runtime/
+*.log
+*.sqlite3
+*.db
+
+# LaTeX auxiliary build files (keep .tex and final .pdf)
+*.aux
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.synctex.gz
+*.toc
+diagrams/_render_all.html
+
+# OS files
+.DS_Store
+Thumbs.db

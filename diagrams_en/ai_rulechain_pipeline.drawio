@@ -1,0 +1,97 @@
+<mxfile host="drawio" version="26.0.0">
+  <diagram id="ai-pipeline" name="AI-RuleChain-Pipeline">
+    <mxGraphModel dx="1600" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="730" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="band1" value="STAGE 1: PHY CSI SIGNAL CONDITIONING &amp; EDGE TINYML INFERENCE (ESP32-S3 NODE 2 — T04, T05, T06)" style="swimlane;startSize=36;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="1480" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s1_raw" value="&lt;b&gt;1. Raw PHY CSI Capture (100 Hz)&lt;/b&gt;&#10;H_k(t) = I_k(t) + j·Q_k(t) from Wi-Fi LLTF&#10;Strip Null/Guard tones → Keep 52 subcarriers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="band1">
+          <mxGeometry x="30" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s1_filt" value="&lt;b&gt;2. Amplitude &amp; Digital Denoising&lt;/b&gt;&#10;|H_k(t)| = sqrt(I_k² + Q_k²) + DHT20 Drift Comp.&#10;Causal Hampel (2K+1=5) + 4th-Ord Butterworth" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="band1">
+          <mxGeometry x="400" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s1_win" value="&lt;b&gt;3. Sliding Window &amp; Subspace Pool&lt;/b&gt;&#10;Window T_w = 2.0 s (200 frames × 52 ch)&#10;Pool to (100 × 16) + Z-score Normalization" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="band1">
+          <mxGeometry x="770" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s1_tiny" value="&lt;b&gt;4. Edge TinyML Inference (INT8 1D-CNN)&lt;/b&gt;&#10;3.3 KB INT8 C++ Engine on ESP32-S3 (&lt;4 ms)&#10;Classes: Empty / Stationary / Walking / Fall [T04]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=11;" vertex="1" parent="band1">
+          <mxGeometry x="1140" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="band2" value="STAGE 2: GPU SPECTROGRAM CROSS-VERIFICATION &amp; BLE FUSION AT PC LOCAL GATEWAY (T03, T08, T09, T10, N04)" style="swimlane;startSize=36;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="265" width="1480" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s2_mqtt" value="&lt;b&gt;8. JSON Packaging &amp; Cloud Sync&lt;/b&gt;&#10;Publish Telemetry + Events to CoreIOT [T08, T15]&#10;Topic: v1/gateway/telemetry (MQTT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=11;" vertex="1" parent="band2">
+          <mxGeometry x="30" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s2_ble" value="&lt;b&gt;7. BLE Identity Fusion [T03]&lt;/b&gt;&#10;Check Whitelist MAC &amp; RSSI &gt;= -75 dBm&#10;Tag flag: ble_authorized = True / False" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="band2">
+          <mxGeometry x="400" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s2_gpu" value="&lt;b&gt;6. RTX 5070 2D-CNN Inference [T09, N04]&lt;/b&gt;&#10;ONNX Runtime CUDAExecutionProvider (0.31 ms)&#10;Weighted Fusion: P = 0.4·P_edge + 0.6·P_gpu" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=11;" vertex="1" parent="band2">
+          <mxGeometry x="770" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s2_stft" value="&lt;b&gt;5. 3-Band STFT Spectrogram&lt;/b&gt;&#10;Generate Time-Doppler Tensor (3 × 64 × 64)&#10;Stream live to Streamlit UI &amp; Snapshots [T10]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="band2">
+          <mxGeometry x="1140" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="band3" value="STAGE 3: COREIOT RULECHAIN AUTOMATION, MULTI-CHANNEL ALERTS &amp; DOWNLINK RPC (T11, T12, T13, T14)" style="swimlane;startSize=36;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="1480" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s3_rule" value="&lt;b&gt;9. RuleChain Event Classifier [T12]&lt;/b&gt;&#10;Evaluate TBEL/JS Script Node logic&#10;on incoming Gateway JSON Telemetry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="band3">
+          <mxGeometry x="30" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s3_fall" value="&lt;b&gt;10A. FALL EMERGENCY Branch&lt;/b&gt;&#10;[state == 'FALL' &amp; fused_conf &gt;= 0.85]&#10;Raise Critical Alarm + Latch SOS Siren" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=11;" vertex="1" parent="band3">
+          <mxGeometry x="400" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s3_intr" value="&lt;b&gt;10B. INTRUSION ALERT Branch&lt;/b&gt;&#10;[motion &amp; armed &amp; ble_auth == False]&#10;Raise Major Security Alarm + Strobe LED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=11;" vertex="1" parent="band3">
+          <mxGeometry x="770" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="s3_act" value="&lt;b&gt;11. Telegram Bot &amp; Cloud Dashboard&lt;/b&gt;&#10;Push instant Telegram / Email alerts [T13]&#10;Update CoreIOT Widgets [T11] &amp; Audit Log" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=11;" vertex="1" parent="band3">
+          <mxGeometry x="1140" y="55" width="310" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep1" value="52 ch" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#6c8ebf;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s1_raw" target="s1_filt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep2" value="Clean |H_k(t)|" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#6c8ebf;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s1_filt" target="s1_win">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep3" value="100×16 Tensor" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#6c8ebf;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s1_win" target="s1_tiny">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep4" value="USB-CDC 921600 bps (CSI + Edge Probs)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s1_tiny" target="s2_stft">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep5" value="3×64×64 STFT" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s2_stft" target="s2_gpu">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep6" value="Fused P(y)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s2_gpu" target="s2_ble">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep7" value="Fused Event" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s2_ble" target="s2_mqtt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep8" value="MQTT Telemetry JSON (Internet / Broker)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#9673a6;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s2_mqtt" target="s3_rule">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep9" value="Fall" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#b85450;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s3_rule" target="s3_fall">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep10" value="Evaluate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#d79b00;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s3_fall" target="s3_intr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep11" value="Dispatch" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#b85450;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="s3_intr" target="s3_act">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

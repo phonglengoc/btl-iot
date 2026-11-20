@@ -1,0 +1,180 @@
+<mxfile host="drawio" version="26.0.0">
+  <diagram id="arch-page" name="Overall-Architecture">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="860" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="tier1" value="TIER 1: RF TRANSMITTER &amp; SENSING LAYER" style="swimlane;startSize=36;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="300" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="n1_tx" value="&lt;b&gt;Node 1: YoloUNO #1 (ESP32-S3)&lt;/b&gt;&#10;100 Hz ESP-NOW Unicast Transmitter&#10;Wi-Fi 802.11n HT20 - Channel 6 [T06]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="tier1">
+          <mxGeometry x="30" y="60" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="n1_i2c" value="&lt;b&gt;DHT20 Temp &amp; Humidity Sensor&lt;/b&gt;&#10;I2C Bus (SDA:11, SCL:12, Addr 0x38)&#10;Tasmota / ESP-IDF [T01]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="tier1">
+          <mxGeometry x="30" y="210" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="n1_ble" value="&lt;b&gt;BLE Identity Tag / Smartphone&lt;/b&gt;&#10;Authorized Resident BLE Beacon&#10;BLE Advertising Frames [T03]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="tier1">
+          <mxGeometry x="30" y="360" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="n1_env" value="&lt;b&gt;Monitored Indoor Room Space&lt;/b&gt;&#10;OFDM Multipath Scattering (CSI)&#10;Empty / Stationary / Walk / Fall" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=12;" vertex="1" parent="tier1">
+          <mxGeometry x="30" y="510" width="240" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tier2" value="TIER 2: EDGE AI &amp; CSI RECEIVER LAYER" style="swimlane;startSize=36;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="430" y="40" width="310" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="n2_rx" value="&lt;b&gt;Node 2: YoloUNO #2 (ESP32-S3)&lt;/b&gt;&#10;ESP-NOW Receiver &amp; PHY CSI Hook&#10;52 Active OFDM Subcarriers [T06]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" vertex="1" parent="tier2">
+          <mxGeometry x="30" y="60" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="n2_tinyml" value="&lt;b&gt;Edge TinyML Engine (INT8 1D-CNN)&lt;/b&gt;&#10;On-Device Real-Time Classification:&#10;Empty / Stationary / Walk / Fall [T04]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="tier2">
+          <mxGeometry x="30" y="210" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="n2_blescan" value="&lt;b&gt;Passive BLE Scanner Module&lt;/b&gt;&#10;Whitelist MAC &amp; RSSI Verification&#10;Resident vs. Intruder Check [T03]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="tier2">
+          <mxGeometry x="30" y="360" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="n2_web" value="&lt;b&gt;Embedded Web Server &amp; Local Alarm&lt;/b&gt;&#10;HTTP Port 80 Config Portal [T07]&#10;PWM Buzzer (IO10) + RGB LED (IO18)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="tier2">
+          <mxGeometry x="30" y="510" width="250" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tier3" value="TIER 3: PC LOCAL IOT GATEWAY LAYER" style="swimlane;startSize=36;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="830" y="40" width="310" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="gw_core" value="&lt;b&gt;Local Gateway Service (Python)&lt;/b&gt;&#10;Telemetry Ingestion &amp; Bidirectional&#10;Downlink RPC Orchestration [T08]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="tier3">
+          <mxGeometry x="30" y="60" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="gw_ai" value="&lt;b&gt;Gateway AI (STFT 2D-CNN)&lt;/b&gt;&#10;Fall &amp; Intrusion Cross-Verification&#10;RTX 5070 ONNX CUDA [T09, N04]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="tier3">
+          <mxGeometry x="30" y="210" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="gw_ui" value="&lt;b&gt;Local Gateway UI (Streamlit)&lt;/b&gt;&#10;52-Ch CSI Heatmap, Spectrogram&#10;&amp; Event Snapshot Gallery [T10, N06]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="tier3">
+          <mxGeometry x="30" y="360" width="250" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="gw_csv" value="&lt;b&gt;Dataset &amp; Training Pipeline&lt;/b&gt;&#10;Labeled CSV Recorder &amp; PyTorch&#10;INT8 / ONNX Export [T05]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="tier3">
+          <mxGeometry x="30" y="510" width="250" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tier4" value="TIER 4: COREIOT CLOUD PLATFORM LAYER" style="swimlane;startSize=36;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=13;pointerEvents=0;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="40" width="300" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="cl_gw" value="&lt;b&gt;CoreIOT Gateway Service&lt;/b&gt;&#10;Multi-Device Telemetry &amp; Attribute&#10;Synchronization via MQTT [T15]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="tier4">
+          <mxGeometry x="30" y="60" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="cl_rule" value="&lt;b&gt;CoreIOT RuleChain Engine&lt;/b&gt;&#10;Automated Fall Emergency &amp;&#10;Intrusion Decision Graph [T12]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="tier4">
+          <mxGeometry x="30" y="210" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="cl_alert" value="&lt;b&gt;Emergency Notification Service&lt;/b&gt;&#10;Instant Telegram Bot &amp; Email&#10;Alert Dispatch [T13]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="tier4">
+          <mxGeometry x="30" y="360" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="cl_dash" value="&lt;b&gt;CoreIOT Dashboard &amp; OTA&lt;/b&gt;&#10;Remote Monitoring &amp; Control [T11]&#10;Dual-Partition OTA Update [T14]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="tier4">
+          <mxGeometry x="30" y="510" width="240" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="Component Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;verticalAlign=top;fontStyle=1;fontSize=12;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="730" width="1490" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" value="" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="legend">
+          <mxGeometry x="30" y="28" width="28" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1t" value="Communication / Management UI" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="66" y="25" width="210" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" value="" style="rounded=1;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="legend">
+          <mxGeometry x="310" y="28" width="28" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2t" value="Sensing / Data Acquisition" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="346" y="25" width="210" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" value="" style="rounded=1;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="legend">
+          <mxGeometry x="590" y="28" width="28" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3t" value="AI Inference / RuleChain / Identity" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="626" y="25" width="230" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" value="" style="rounded=1;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="legend">
+          <mxGeometry x="890" y="28" width="28" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4t" value="Emergency Alerts &amp; Local Actuators" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="926" y="25" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" value="" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="legend">
+          <mxGeometry x="1210" y="28" width="28" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5t" value="CoreIOT Cloud Synchronization" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="1246" y="25" width="220" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_i2c_tx" value="I2C Bus" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="n1_i2c" target="n1_tx">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_tx_rx" value="ESP-NOW 100 Hz&#10;(Wi-Fi CSI)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#0066cc;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="n1_tx" target="n2_rx">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ble_scan" value="BLE Adv&#10;(RSSI/MAC)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeColor=#d6b656;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="n1_ble" target="n2_blescan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_env_rx" value="RF Perturbation" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeColor=#666666;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="n1_env" target="n2_rx">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="370" y="605" />
+              <mxPoint x="370" y="168" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_rx_tiny" value="CSI Tensor" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="n2_rx" target="n2_tinyml">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_tiny_ble" value="Activity Class" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="n2_tinyml" target="n2_blescan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ble_web" value="Trigger Siren/LED" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="n2_blescan" target="n2_web">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_rx_gw" value="USB-CDC 921600&#10;(CSI + JSONL)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.35;exitDx=0;exitDy=0;entryX=0;entryY=0.35;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#d79b00;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="n2_rx" target="gw_core">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_gw_rx_cmd" value="RPC / Threshold" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeColor=#b85450;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="gw_core" target="n2_rx">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_csv_tiny" value="Export C++ Header&#10;(INT8 Weights)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="gw_csv" target="n2_tinyml">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="785" y="605" />
+              <mxPoint x="785" y="295" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_gw_ai" value="52-Ch Window" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="gw_core" target="gw_ai">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ai_ui" value="Heatmap &amp; Snapshots" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="gw_ai" target="gw_ui">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ui_csv" value="Record CSV Samples" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="gw_ui" target="gw_csv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_gw_cloud" value="MQTT / JSON&#10;(Sync Telemetry)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.35;exitDx=0;exitDy=0;entryX=0;entryY=0.35;entryDx=0;entryDy=0;endArrow=block;endSize=8;strokeWidth=2;strokeColor=#9673a6;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="gw_core" target="cl_gw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cloud_gw_rpc" value="Downlink RPC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;endArrow=block;endSize=8;dashed=1;strokeColor=#b85450;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="cl_gw" target="gw_core">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_cl_gw_rule" value="Event Stream" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="cl_gw" target="cl_rule">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cl_rule_alert" value="Fall / Intrusion" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="cl_rule" target="cl_alert">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cl_alert_dash" value="Log &amp; Visualize" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="cl_alert" target="cl_dash">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

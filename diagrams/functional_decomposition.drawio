@@ -1,0 +1,144 @@
+<mxfile host="drawio" version="26.0.0">
+  <diagram id="func-decomp" name="Functional-Decomposition">
+    <mxGraphModel dx="1600" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="580" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        
+        <mxCell id="root_sys" value="&lt;b&gt;HỆ THỐNG RADAR KHÔNG CAMERA (WI-FI CSI &amp; BLE)&#10;PHÁT HIỆN TÉ NGÃ VÀ XÂM NHẬP TÍCH HỢP AI TẠI BIÊN&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="480" y="30" width="600" height="70" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="sub1" value="&lt;b&gt;1. Cảm biến &amp; Sóng Vô tuyến&lt;/b&gt;&#10;(RF CSI &amp; Environmental Sensing)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="170" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f01" value="&lt;b&gt;F01: Phát &amp; Thu Ma trận CSI&lt;/b&gt;&#10;Giao tiếp ESP-NOW 100 Hz&#10;giữa 2 mạch YoloUNO [T06]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="f02" value="&lt;b&gt;F02: Đo Nhiệt độ &amp; Độ ẩm&lt;/b&gt;&#10;Cảm biến I2C DHT20 bù nhiễu&#10;môi trường truyền sóng [T01]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="430" width="260" height="80" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="sub2" value="&lt;b&gt;2. Định danh &amp; Học máy tại Biên&lt;/b&gt;&#10;(BLE Identity &amp; Edge TinyML)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="340" y="170" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f03" value="&lt;b&gt;F03: Quét Định danh BLE&lt;/b&gt;&#10;Thu thập MAC &amp; RSSI từ Beacon&#10;phân biệt Người nhà / Kẻ lạ [T03]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="340" y="300" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="f04" value="&lt;b&gt;F04: Suy luận TinyML 1D-CNN&lt;/b&gt;&#10;Phân loại Empty / Stationary /&#10;Walking / Fall trên ESP32-S3 [T04, T05]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="340" y="430" width="260" height="80" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="sub3" value="&lt;b&gt;3. Giao diện &amp; Báo động Tại chỗ&lt;/b&gt;&#10;(Embedded Web &amp; Local Alarm)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="650" y="170" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f05" value="&lt;b&gt;F05: Web Server Nhúng&lt;/b&gt;&#10;Hiển thị trạng thái &amp; tinh chỉnh&#10;ngưỡng nhạy trực tiếp trên mạch [T07]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="650" y="300" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="f06" value="&lt;b&gt;F06: Báo động Còi &amp; Đèn RGB&lt;/b&gt;&#10;Kích hoạt tức thời Buzzer + LED&#10;khi phát hiện Té ngã &amp; Nút SOS [T04]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="650" y="430" width="260" height="80" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="sub4" value="&lt;b&gt;4. Trạm Local IoT Gateway&lt;/b&gt;&#10;(PC Gateway, GPU AI &amp; Local UI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="960" y="170" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f07" value="&lt;b&gt;F07: Thu thập &amp; Điều phối Gateway&lt;/b&gt;&#10;Tổng hợp dữ liệu Node 1/2 &amp; đồng bộ&#10;2 chiều với CoreIOT [T08, T15]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="960" y="300" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="f08" value="&lt;b&gt;F08: AI Spectrogram GPU &amp; UI&lt;/b&gt;&#10;Xác thực chéo bằng 2D-CNN trên GPU&#10;&amp; Vẽ Heatmap 64 kênh [T09, T10, N04]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="960" y="430" width="260" height="80" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="sub5" value="&lt;b&gt;5. Đám mây CoreIOT &amp; Quản trị&lt;/b&gt;&#10;(Cloud RuleChain, Alert &amp; OTA)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="170" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f09" value="&lt;b&gt;F09: RuleChain &amp; Cảnh báo Từ xa&lt;/b&gt;&#10;Tự động phân loại Cấp cứu / Trộm&#10;&amp; gửi Telegram / Email [T12, T13]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="300" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="f10" value="&lt;b&gt;F10: Dashboard &amp; Nạp OTA&lt;/b&gt;&#10;Giám sát từ xa qua Template [T11]&#10;&amp; Cập nhật Firmware OTA [T14]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="430" width="260" height="80" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="er1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="root_sys" target="sub1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="540" y="120" />
+              <mxPoint x="170" y="120" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="er2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="root_sys" target="sub2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="660" y="140" />
+              <mxPoint x="470" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="er3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="root_sys" target="sub3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.7;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="root_sys" target="sub4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="900" y="140" />
+              <mxPoint x="1090" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="er5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="root_sys" target="sub5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1020" y="120" />
+              <mxPoint x="1390" y="120" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="es1_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="sub1" target="f01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es1_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="f01" target="f02">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="es2_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="sub2" target="f03">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es2_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="f03" target="f04">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="es3_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="sub3" target="f05">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es3_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="f05" target="f06">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="es4_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="sub4" target="f07">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es4_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="f07" target="f08">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="es5_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="sub5" target="f09">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es5_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endSize=8;" edge="1" parent="1" source="f09" target="f10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,141 @@
+<mxfile host="app.diagrams.net" modified="2026-11-15T11:18:00.000Z" agent="Antigravity" version="24.7.17">
+  <diagram id="fw_ota_arch" name="Firmware FreeRTOS and Dual-OTA">
+    <mxGraphModel dx="1480" dy="880" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1580" pageHeight="760" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="grp_mcu" value="Dual-Core FreeRTOS Task Architecture on Node 2 — YoloUNO ESP32-S3 (240 MHz, Dual Xtensa LX7)" style="swimlane;startSize=34;fillColor=#f8fafc;strokeColor=#334155;fontStyle=1;fontSize=14;rounded=1;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="930" height="680" as="geometry" />
+        </mxCell>
+
+        <mxCell id="grp_core1" value="Core 1 — Real-Time PHY CSI, Digital Filtering &amp; TinyML Pipeline (High Priority)" style="swimlane;startSize=28;fillColor=#eff6ff;strokeColor=#2563eb;fontStyle=1;fontSize=12;rounded=1;" vertex="1" parent="grp_mcu">
+          <mxGeometry x="25" y="55" width="880" height="275" as="geometry" />
+        </mxCell>
+
+        <mxCell id="isr_csi" value="IRAM Hardware Callback&#10;wifi_csi_rx_cb()&#10;(128B I/Q @ 100 Hz)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core1">
+          <mxGeometry x="25" y="55" width="185" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="q_csi" value="Lock-Free Ring Queue&#10;xQueueCSI (64 frames)&#10;SRAM / Octal PSRAM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core1">
+          <mxGeometry x="265" y="55" width="175" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dsp_blk" value="Digital Signal Conditioning&#10;Hampel (2K+1=5) +&#10;4th-Ord Butterworth (SOS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core1">
+          <mxGeometry x="495" y="55" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tinyml_blk" value="TinyML Engine (T04)&#10;INT8 1D-CNN (3.3 KB)&#10;200 ms Stride (&lt; 4 ms)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fae8ff;strokeColor=#a21caf;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core1">
+          <mxGeometry x="720" y="55" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="usb_cdc" value="USB-CDC 921600 bps&#10;(Stream JSONL + 52 CSI ch&#10;&amp; Parse PC Downlink RPC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0369a1;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core1">
+          <mxGeometry x="495" y="175" width="200" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="io_alarm" value="Local Alarm Actuators&#10;2.7 kHz Buzzer (GPIO10)&#10;WS2812B RGB (GPIO18)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core1">
+          <mxGeometry x="720" y="175" width="140" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="grp_core0" value="Core 0 — Wireless Protocol Stack: BLE, Embedded Web &amp; OTA (Isolated from CSI ISR)" style="swimlane;startSize=28;fillColor=#f0fdf4;strokeColor=#16a34a;fontStyle=1;fontSize=12;rounded=1;" vertex="1" parent="grp_mcu">
+          <mxGeometry x="25" y="375" width="880" height="275" as="geometry" />
+        </mxCell>
+
+        <mxCell id="espnow_rx" value="onEspNowDataRecv()&#10;Unpack 24-Byte Frame (T06)&#10;CRC-8 &amp; DHT20 Temp/RH" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core0">
+          <mxGeometry x="25" y="55" width="190" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ble_scan" value="Task_BLE_Scanner (T03)&#10;Passive 80 ms / 1s Scan&#10;MAC Whitelist &amp; RSSI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core0">
+          <mxGeometry x="255" y="55" width="190" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="web_srv" value="Embedded Web Server (T07)&#10;HTTP Port 80: /api/status,&#10;/api/config, /api/alarm" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core0">
+          <mxGeometry x="485" y="55" width="190" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ota_cli" value="CoreIOTOtaUpdater (T14)&#10;4096B Chunk + SHA-256&#10;Switch ota_0 / ota_1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#6d28d9;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core0">
+          <mxGeometry x="710" y="55" width="150" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shared_st" value="Spinlock-Protected Shared State Struct (portMUX_TYPE g_stateMux)&#10;csi_state | edge_conf | temp_c | humi_rh | ble_authorized | fall_threshold | alarm_active" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#475569;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core0">
+          <mxGeometry x="25" y="180" width="650" height="68" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sos_btn" value="SOS Button (GPIO14)&#10;&lt;3s: Mute | &gt;=3s: SOS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontStyle=1;fontSize=11;" vertex="1" parent="grp_core0">
+          <mxGeometry x="710" y="180" width="150" height="68" as="geometry" />
+        </mxCell>
+
+        <mxCell id="grp_flash" value="ESP32-S3 Flash Partition Map (Dual-OTA Rollback — T14)" style="swimlane;startSize=34;fillColor=#faf5ff;strokeColor=#6d28d9;fontStyle=1;fontSize=14;rounded=1;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="30" width="535" height="680" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p_boot" value="0x000000 — Bootloader &amp; Partition Table (36 KB)&#10;Verifies boot flags &amp; image header integrity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e2e8f0;strokeColor=#475569;fontStyle=1;fontSize=11;" vertex="1" parent="grp_flash">
+          <mxGeometry x="40" y="60" width="430" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p_nvs" value="0x009000 — nvs (20 KB) &amp; 0x00E000 — otadata (8 KB)&#10;Stores Active / Pending-Verify slot pointers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontStyle=1;fontSize=11;" vertex="1" parent="grp_flash">
+          <mxGeometry x="40" y="150" width="430" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p_ota0" value="0x010000 — app0 (ota_0: 3.0 MB / 3,145,728 B)&#10;Active Firmware v1.0.0 (Node 2 uses 47.4% = 1.49 MB)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontStyle=1;fontSize=11;" vertex="1" parent="grp_flash">
+          <mxGeometry x="40" y="255" width="430" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p_ota1" value="0x310000 — app1 (ota_1: 3.0 MB / 3,145,728 B)&#10;Staging Slot for v1.1.0 + mbedTLS SHA-256 Check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#1d4ed8;fontStyle=1;fontSize=11;" vertex="1" parent="grp_flash">
+          <mxGeometry x="40" y="390" width="430" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p_spiffs" value="0x610000 — spiffs (1.87 MB) &amp; 0x7F0000 — coredump (64 KB)&#10;Static assets, persistent config &amp; panic diagnostics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#7e22ce;fontStyle=1;fontSize=11;" vertex="1" parent="grp_flash">
+          <mxGeometry x="40" y="525" width="430" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_c1_1" value="ISR Push" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#1d4ed8;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="grp_core1" source="isr_csi" target="q_csi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c1_2" value="52 ch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#15803d;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="grp_core1" source="q_csi" target="dsp_blk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c1_3" value="100x16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#a21caf;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="grp_core1" source="dsp_blk" target="tinyml_blk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c1_4" value="Trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;strokeColor=#dc2626;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="grp_core1" source="tinyml_blk" target="io_alarm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c1_5" value="JSONL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.475;entryY=0;strokeWidth=2;strokeColor=#0369a1;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="grp_core1" source="dsp_blk" target="usb_cdc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_c0_1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.146;entryY=0;strokeWidth=1.8;strokeColor=#15803d;" edge="1" parent="grp_core0" source="espnow_rx" target="shared_st">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c0_2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=1.8;strokeColor=#1d4ed8;" edge="1" parent="grp_core0" source="ble_scan" target="shared_st">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c0_3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.854;entryY=0;strokeWidth=1.8;strokeColor=#d97706;" edge="1" parent="grp_core0" source="web_srv" target="shared_st">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c0_4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;strokeWidth=1.8;strokeColor=#dc2626;" edge="1" parent="grp_core0" source="sos_btn" target="shared_st">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_ota_flash" value="Write 4096B Chunks&#10;&amp; Verify SHA-256" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2.2;strokeColor=#6d28d9;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="ota_cli" target="p_ota1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="985" y="502" />
+              <mxPoint x="985" y="472" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_rollback" value="Auto Rollback&#10;on Boot Fault" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;strokeWidth=1.8;dashed=1;strokeColor=#dc2626;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="p_ota1" target="p_ota0">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1508" y="472" />
+              <mxPoint x="1508" y="338" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

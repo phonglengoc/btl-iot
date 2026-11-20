@@ -1,0 +1,159 @@
+{
+  "ruleChain": {
+    "additionalInfo": {
+      "description": "HCMUT IoT HK261 - Collaborative AI Fall Emergency & BLE Intrusion Detection RuleChain (T12, T13)"
+    },
+    "name": "CSI_Fall_And_Intrusion_Smart_RuleChain",
+    "type": "CORE",
+    "firstRuleNodeId": null,
+    "root": false,
+    "debugMode": true
+  },
+  "metadata": {
+    "firstNodeIndex": 0,
+    "nodes": [
+      {
+        "additionalInfo": {
+          "description": "Route Telemetry vs Attributes vs RPC",
+          "layoutX": 240,
+          "layoutY": 160
+        },
+        "type": "org.thingsboard.rule.engine.filter.TbMsgTypeSwitchNode",
+        "name": "Message Type Switch",
+        "debugMode": false,
+        "configuration": {
+          "version": 0
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Persist incoming CSI & DHT20 telemetry to CoreIOT Timeseries DB",
+          "layoutX": 520,
+          "layoutY": 80
+        },
+        "type": "org.thingsboard.rule.engine.telemetry.TbMsgTimeseriesNode",
+        "name": "Save CSI & Env Telemetry",
+        "debugMode": false,
+        "configuration": {
+          "defaultTTL": 0,
+          "skipLatestPersistence": false,
+          "useServerTs": false
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Two-Stage AI Fusion & BLE Authorization Smart Filter (Listing 3.2 - T12)",
+          "layoutX": 820,
+          "layoutY": 160
+        },
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "Enrich Fused AI & Evaluate Alert",
+        "debugMode": true,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "var edgeConf = Number(msg.edge_conf || 0);\nvar gpuConf  = Number(msg.gpu_conf || 0);\nvar fusedConf = 0.4 * edgeConf + 0.6 * gpuConf;\nmsg.fused_conf = Math.round(fusedConf * 1000) / 1000;\n\nif (msg.sos_triggered === true) {\n    msg.alarm_type = 'CRITICAL_SOS_EMERGENCY';\n    msg.alarm_severity = 'CRITICAL';\n    msg.telegram_text = '[SOS KHAN CAP] Nhan nut SOS tren Node 2! Nhiet do: ' + msg.room_temp_c + 'C.';\n    return {msg: msg, metadata: metadata, msgType: msgType};\n}\n\nif (msg.csi_state === 'FALL' && fusedConf >= Number(msg.fall_threshold || 0.85)) {\n    msg.alarm_type = 'CRITICAL_FALL_EMERGENCY';\n    msg.alarm_severity = 'CRITICAL';\n    msg.telegram_text = '[CAP CUU KHAN CAP] Phat hien NGUOI TE NGA trong phong! Do tin cay AI: ' + Math.round(fusedConf * 100) + '%, Nhiet do: ' + msg.room_temp_c + 'C. Vui long kiem tra ngay!';\n    return {msg: msg, metadata: metadata, msgType: msgType};\n}\n\nif (msg.csi_state === 'WALKING' && msg.ble_authorized === false) {\n    msg.alarm_type = 'MAJOR_INTRUSION_ALERT';\n    msg.alarm_severity = 'MAJOR';\n    msg.telegram_text = '[CANH BAO AN NINH] Phat hien CHUYEN DONG KHONG CO BLE HOP LE! Nghi ngo co nguoi la dot nhap.';\n    return {msg: msg, metadata: metadata, msgType: msgType};\n}\n\nmsg.alarm_type = 'NORMAL';\nreturn {msg: msg, metadata: metadata, msgType: msgType};"
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Branch between NORMAL vs CRITICAL_FALL_EMERGENCY / MAJOR_INTRUSION_ALERT",
+          "layoutX": 1120,
+          "layoutY": 160
+        },
+        "type": "org.thingsboard.rule.engine.filter.TbJsFilterNode",
+        "name": "Is Emergency Or Intrusion?",
+        "debugMode": true,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "return msg.alarm_type === 'CRITICAL_FALL_EMERGENCY' || msg.alarm_type === 'MAJOR_INTRUSION_ALERT' || msg.alarm_type === 'CRITICAL_SOS_EMERGENCY';"
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Create persistent CoreIOT Alarm on Dashboard (T11, T12)",
+          "layoutX": 1440,
+          "layoutY": 60
+        },
+        "type": "org.thingsboard.rule.engine.action.TbCreateAlarmNode",
+        "name": "Create CoreIOT Alarm",
+        "debugMode": true,
+        "configuration": {
+          "scriptLang": "JS",
+          "alarmDetailsBuildJs": "var details = {};\ndetails.alarm_type = msg.alarm_type;\ndetails.fused_conf = msg.fused_conf;\ndetails.ble_mac = msg.ble_mac;\ndetails.telegram_text = msg.telegram_text;\nreturn details;",
+          "useMessageAlarmData": false,
+          "overwriteAlarmDetails": true,
+          "alarmType": "${alarm_type}",
+          "severity": "CRITICAL",
+          "propagate": true,
+          "relationTypes": []
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Send instant emergency notification via Telegram Bot REST API (T13) - Configure ss_telegramBotToken & ss_telegramChatId in Server Attributes!",
+          "layoutX": 1440,
+          "layoutY": 180
+        },
+        "type": "org.thingsboard.rule.engine.rest.TbRestApiCallNode",
+        "name": "Send Telegram Alert (T13)",
+        "debugMode": true,
+        "configuration": {
+          "restEndpointUrlPattern": "https://api.telegram.org/bot${ss_telegramBotToken}/sendMessage",
+          "requestMethod": "POST",
+          "useSimpleClientHttpFactory": true,
+          "readTimeoutMs": 5000,
+          "maxParallelRequestsCount": 10,
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Send Downlink RPC back to PC Local Gateway & Node 2 to latch buzzer/LED alarm (T08, T15)",
+          "layoutX": 1440,
+          "layoutY": 300
+        },
+        "type": "org.thingsboard.rule.engine.rpc.TbSendRPCRequestNode",
+        "name": "Latch Local Alarm via RPC",
+        "debugMode": false,
+        "configuration": {
+          "timeoutInSeconds": 10
+        }
+      }
+    ],
+    "connections": [
+      {
+        "fromIndex": 0,
+        "toIndex": 1,
+        "type": "Post telemetry"
+      },
+      {
+        "fromIndex": 1,
+        "toIndex": 2,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 2,
+        "toIndex": 3,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 3,
+        "toIndex": 4,
+        "type": "True"
+      },
+      {
+        "fromIndex": 3,
+        "toIndex": 5,
+        "type": "True"
+      },
+      {
+        "fromIndex": 3,
+        "toIndex": 6,
+        "type": "True"
+      }
+    ],
+    "ruleChainConnections": null
+  }
+}
