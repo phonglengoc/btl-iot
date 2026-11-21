@@ -1,13 +1,13 @@
 {
-  "total_windows": 1400,
+  "total_windows": 1200,
   "samples_per_class": {
-    "EMPTY": 350,
-    "STATIONARY": 350,
-    "WALKING": 350,
-    "FALL": 350
+    "EMPTY": 300,
+    "STATIONARY": 300,
+    "WALKING": 300,
+    "FALL": 300
   },
-  "window_frames": 200,
-  "sampling_rate_hz": 100.0,
+  "window_frames": 40,
+  "sampling_rate_hz": 20.0,
   "active_subcarriers": 52,
-  "npz_path": "D:\\BACH KHOA\\hk261\\IoT\\btl\\ai_training\\dataset\\csi_multimodal_dataset.npz"
+  "format": "csv"
 }

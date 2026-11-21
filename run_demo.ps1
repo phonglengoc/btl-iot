@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-    Khoi chay toan bo He thong Radar Wi-Fi CSI & BLE (Che do Gia lap HIL + GPU RTX 5070)
-    khong can cam mach YoloUNO vat ly!
+    Khoi chay He thong Phat hien Te nga & Giam sat Phong o Thong minh
+    (Che do Gia lap khong can cam mach YoloUNO vat ly, chay AI scikit-learn tren CPU)
 #>
 
 $ErrorActionPreference = "Stop"
@@ -9,23 +9,22 @@ $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ProjectRoot
 
 Write-Host "===================================================================" -ForegroundColor Cyan
-Write-Host " HCMUT IoT HK261 - Wi-Fi CSI Fall & Intrusion Detection Launcher   " -ForegroundColor Cyan
+Write-Host " HCMUT IoT HK261 - Smart Fall Detection & Room Monitoring Launcher " -ForegroundColor Cyan
 Write-Host "===================================================================" -ForegroundColor Cyan
 
 $PythonExe = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 $StreamlitExe = Join-Path $ProjectRoot ".venv\Scripts\streamlit.exe"
 
 if (-not (Test-Path $PythonExe)) {
-    Write-Error "Chua tim thay .venv! Vui long tao moi truong Python 3.11 truoc."
+    Write-Error "Chua tim thay .venv! Chay: python -m venv .venv; .\.venv\Scripts\pip install -r requirements.txt"
 }
 
-# Neu chua co mo hinh ONNX hoac header TinyML thi tu dong huan luyen tren GPU RTX 5070
-if (-not (Test-Path "ai_training\models\csi_spectrogram_2dcnn.onnx") -or -not (Test-Path "firmware\node2_rx_edge_ai\include\model_data.h")) {
-    Write-Host "[1/2] Dang sinh du lieu CSI va huan luyen AI tren GPU RTX 5070..." -ForegroundColor Yellow
-    & $PythonExe ai_training\csi_physics_generator.py --samples-per-class 350
-    & $PythonExe ai_training\train_tinyml_1dcnn.py --epochs 65
-    & $PythonExe ai_training\train_gpu_2dcnn.py --epochs 45
+# Tu dong sinh du lieu mau va huan luyen mo hinh Random Forest (T05, T09) neu chua co
+if (-not (Test-Path "ai_training\models\fall_rf_model.joblib")) {
+    Write-Host "[1/2] Dang sinh du lieu CSI (20 Hz) va huan luyen mo hinh Random Forest (scikit-learn)..." -ForegroundColor Yellow
+    & $PythonExe ai_training\csi_data_generator.py --samples-per-class 300
+    & $PythonExe ai_training\train_gateway_ai.py
 }
 
-Write-Host "[2/2] Dang mo Dashboard Streamlit (http://localhost:8501) & Node 2 Web UI (http://127.0.0.1:8082)..." -ForegroundColor Green
+Write-Host "[2/2] Dang mo Dashboard Streamlit (http://localhost:8501)..." -ForegroundColor Green
 & $StreamlitExe run gateway\streamlit_ui.py

@@ -1,0 +1,142 @@
+"""
+Simple Statistical Signal Processing for Wi-Fi CSI Fall Detection (`T05`, `T09`).
+
+Replaces complex Hampel/Butterworth DSP and STFT spectrograms with intuitive,
+easy-to-explain basic statistics over a 2.0-second window (40 frames @ 20 Hz):
+  1. Moving Average smoothing (window = 3 frames) to reduce random spike noise.
+  2. Standard Deviation (Std) & Peak-to-Peak Range (Max - Min) across 52 subcarriers.
+  3. Sudden surge + post-impact stillness indicators (comparing peak jump vs tail stability):
+     When a person falls, the signal jumps sharply and then becomes still on the floor.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+# Sampling & window configuration (20 Hz -> 40 frames = 2.0 seconds)
+FS_CSI_HZ: float = 20.0
+WINDOW_SECONDS: float = 2.0
+WINDOW_SAMPLES: int = 40
+NUM_SUBCARRIERS: int = 52
+SMOOTH_WINDOW: int = 3
+
+CLASS_NAMES: list[str] = ["EMPTY", "STATIONARY", "WALKING", "FALL"]
+CLASS_TO_IDX: dict[str, int] = {name: idx for idx, name in enumerate(CLASS_NAMES)}
+
+FEATURE_NAMES: list[str] = [
+    "std_all",            # Do lech chuan trung binh cua 52 song mang trong 2 giay
+    "range_all",          # Bien do dao dong (Max - Min) trung binh tren 52 song mang
+    "max_range_sc",       # (Max - Min) lon nhat trong 52 song mang
+    "activity_mean",      # Muc xao tron song trung binh toan cua so 2 giay
+    "activity_std",       # Do lech chuan muc xao tron theo thoi gian
+    "activity_max",       # Dinh xao tron song lon nhat trong 2 giay
+    "delta_mean",         # Toc do thay doi trung binh giua 2 khung lien tiep
+    "delta_max",          # Buoc nhay dot ngot lon nhat (rat cao khi te nga)
+    "std_first_half",     # Do lech chuan nua dau cua so (0.0s -> 1.0s)
+    "std_second_half",    # Do lech chuan nua sau cua so (1.0s -> 2.0s)
+    "post_peak_std",      # Do lech chuan doan sau dinh va cham (thap khi nam yen sau nga)
+    "peak_to_tail_ratio", # Ti so dinh dot ngot / muc dao dong cuoi cua so
+]
+
+
+def moving_average_smooth(amps: np.ndarray, window_size: int = SMOOTH_WINDOW) -> np.ndarray:
+    """
+    Smooth a (T, 52) CSI amplitude array along the time axis using a simple Moving Average.
+    """
+    x = np.asarray(amps, dtype=np.float32)
+    if x.ndim != 2 or x.shape[0] < window_size or window_size <= 1:
+        return x.copy()
+
+    pad_left = window_size // 2
+    pad_right = window_size - 1 - pad_left
+    padded = np.pad(x, ((pad_left, pad_right), (0, 0)), mode="edge")
+    csum = np.cumsum(padded, axis=0, dtype=np.float64)
+    csum = np.vstack([np.zeros((1, x.shape[1]), dtype=np.float64), csum])
+    smoothed = (csum[window_size:] - csum[:-window_size]) / float(window_size)
+    return smoothed.astype(np.float32)
+
+
+def compute_disturbance_curve(amps: np.ndarray, smooth_win: int = SMOOTH_WINDOW) -> np.ndarray:
+    """
+    Compute a 1D room disturbance curve (length T) after Moving Average smoothing.
+    Each point represents how much the 52 Wi-Fi subcarriers deviate from their window mean.
+    """
+    smooth = moving_average_smooth(amps, window_size=smooth_win)
+    centered = smooth - np.mean(smooth, axis=0, keepdims=True)
+    return np.mean(np.abs(centered), axis=1).astype(np.float32)
+
+
+def extract_statistical_features(amps_40x52: np.ndarray, smooth_win: int = SMOOTH_WINDOW) -> np.ndarray:
+    """
+    Extract 12 simple statistical features from a 2.0-second CSI window (40, 52)
+    for scikit-learn Random Forest / MLP classification (`T09`).
+    """
+    smooth = moving_average_smooth(amps_40x52, window_size=smooth_win)  # (40, 52)
+    n_frames = smooth.shape[0]
+
+    # 1. Global Standard Deviation & (Max - Min) across the 52 subcarriers
+    sc_std = np.std(smooth, axis=0)
+    sc_range = np.max(smooth, axis=0) - np.min(smooth, axis=0)
+    std_all = float(np.mean(sc_std))
+    range_all = float(np.mean(sc_range))
+    max_range_sc = float(np.max(sc_range))
+
+    # 2. Instantaneous room disturbance curve over 2 seconds
+    centered = smooth - np.mean(smooth, axis=0, keepdims=True)
+    activity = np.mean(np.abs(centered), axis=1)  # (40,)
+    activity_mean = float(np.mean(activity))
+    activity_std = float(np.std(activity))
+    activity_max = float(np.max(activity))
+
+    # 3. Frame-to-frame sudden jump (|x[t] - x[t-1]|)
+    frame_deltas = np.mean(np.abs(np.diff(smooth, axis=0)), axis=1)  # (39,)
+    delta_mean = float(np.mean(frame_deltas))
+    delta_max = float(np.max(frame_deltas))
+    peak_idx = int(np.argmax(frame_deltas))
+
+    # 4. First half vs Second half comparison (0..1s vs 1..2s)
+    mid = n_frames // 2
+    std_first_half = float(np.mean(np.std(smooth[:mid], axis=0)))
+    std_second_half = float(np.mean(np.std(smooth[mid:], axis=0)))
+
+    # 5. Post-peak stillness (key intuition for FALL: sharp jump followed by floor stillness!)
+    post_start = min(n_frames - 8, peak_idx + 5)
+    post_segment = smooth[post_start:]
+    post_peak_std = float(np.mean(np.std(post_segment, axis=0)))
+
+    tail_segment = smooth[-10:]  # Last 0.5 seconds (10 frames @ 20 Hz)
+    tail_std = float(np.mean(np.std(tail_segment, axis=0)))
+    peak_to_tail_ratio = float(delta_max / (tail_std + 0.15))
+
+    return np.array(
+        [
+            std_all,
+            range_all,
+            max_range_sc,
+            activity_mean,
+            activity_std,
+            activity_max,
+            delta_mean,
+            delta_max,
+            std_first_half,
+            std_second_half,
+            post_peak_std,
+            peak_to_tail_ratio,
+        ],
+        dtype=np.float32,
+    )
+
+
+def compute_signal_summary(amps_40x52: np.ndarray) -> dict:
+    """
+    Compute human-friendly metrics for Gateway telemetry and Streamlit line charts (`T08`, `T10`).
+    """
+    smooth = moving_average_smooth(amps_40x52, window_size=SMOOTH_WINDOW)
+    sc_std = np.std(smooth, axis=0)
+    sc_range = np.max(smooth, axis=0) - np.min(smooth, axis=0)
+    curve = compute_disturbance_curve(amps_40x52, smooth_win=SMOOTH_WINDOW)
+    return {
+        "signal_std": round(float(np.mean(sc_std)), 3),
+        "signal_range": round(float(np.mean(sc_range)), 3),
+        "activity_curve": [round(float(v), 2) for v in curve],
+    }

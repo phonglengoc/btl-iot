@@ -1,11 +1,11 @@
 {
-  "title": "HCMUT IoT HK261 - Wi-Fi CSI Fall & Intrusion Radar Dashboard",
+  "title": "HCMUT IoT HK261 - Smart Fall Detection & Room Monitoring Dashboard",
   "configuration": {
-    "description": "Remote Monitoring, BLE Identity, Time-Series Telemetry, RPC Control & OTA Status Dashboard (T11, T14, T15)",
+    "description": "Remote Monitoring, DHT20 Environment, Gateway AI Fall Detection & Buzzer RPC Control (T11, T12, T13, T15)",
     "entityAliases": {
       "alias_node2_rx": {
         "id": "alias_node2_rx",
-        "alias": "YoloUNO Node 2 (CSI Radar & Edge AI)",
+        "alias": "YoloUNO Node 2 (CSI Rx & Alarm)",
         "filter": {
           "type": "singleEntity",
           "resolveMultiple": false,
@@ -34,7 +34,7 @@
         "bundleAlias": "cards",
         "typeAlias": "simple_card",
         "type": "latest",
-        "title": "1. Trạng thái An toàn & Định danh BLE (T03, T04, T09)",
+        "title": "1. Trạng thái Phòng & Phân loại Té ngã AI (T09)",
         "sizeX": 8,
         "sizeY": 4,
         "row": 0,
@@ -45,11 +45,10 @@
               "type": "entity",
               "entityAliasId": "alias_node2_rx",
               "dataKeys": [
-                {"name": "csi_state", "type": "timeseries", "label": "Trạng thái AI Hợp nhất"},
-                {"name": "fused_conf", "type": "timeseries", "label": "Độ tin cậy Fused AI"},
-                {"name": "ble_authorized", "type": "timeseries", "label": "Xác thực BLE Người nhà"},
-                {"name": "ble_mac", "type": "timeseries", "label": "MAC BLE Beacon"},
-                {"name": "ble_rssi", "type": "timeseries", "label": "Cường độ BLE (dBm)"}
+                {"name": "csi_state", "type": "timeseries", "label": "Trạng thái AI (Random Forest)"},
+                {"name": "ai_conf", "type": "timeseries", "label": "Độ tin cậy AI"},
+                {"name": "signal_std", "type": "timeseries", "label": "Độ lệch chuẩn sóng CSI (Std)"},
+                {"name": "signal_range", "type": "timeseries", "label": "Biên độ dao động (Max - Min)"}
               ]
             }
           ]
@@ -73,8 +72,7 @@
               "dataKeys": [
                 {"name": "room_temp_c", "type": "timeseries", "label": "Nhiệt độ phòng (°C)", "units": "°C"},
                 {"name": "room_humi_rh", "type": "timeseries", "label": "Độ ẩm tương đối (%RH)", "units": "%"},
-                {"name": "pkt_loss_pct", "type": "timeseries", "label": "Tỷ lệ mất gói ESP-NOW (%)", "units": "%"},
-                {"name": "fw_version", "type": "timeseries", "label": "Phiên bản Firmware OTA"}
+                {"name": "pkt_loss_pct", "type": "timeseries", "label": "Tỷ lệ mất gói ESP-NOW (%)", "units": "%"}
               ]
             }
           ]
@@ -85,7 +83,7 @@
         "bundleAlias": "charts",
         "typeAlias": "basic_timeseries",
         "type": "timeseries",
-        "title": "3. Đồ thị Năng lượng Sóng CSI & Xác suất AI Đa tầng theo Thời gian thực",
+        "title": "3. Đồ thị Dao động Sóng CSI & Độ tin cậy AI theo Thời gian thực",
         "sizeX": 16,
         "sizeY": 6,
         "row": 4,
@@ -97,10 +95,9 @@
               "type": "entity",
               "entityAliasId": "alias_node2_rx",
               "dataKeys": [
-                {"name": "csi_motion_energy", "type": "timeseries", "label": "Năng lượng Chuyển động CSI"},
-                {"name": "edge_conf", "type": "timeseries", "label": "Edge TinyML Conf"},
-                {"name": "gpu_conf", "type": "timeseries", "label": "RTX 5070 GPU Conf"},
-                {"name": "fused_conf", "type": "timeseries", "label": "Fused AI Conf"}
+                {"name": "signal_std", "type": "timeseries", "label": "Độ lệch chuẩn sóng (Std)"},
+                {"name": "signal_range", "type": "timeseries", "label": "Biên độ (Max - Min)"},
+                {"name": "ai_conf", "type": "timeseries", "label": "Độ tin cậy AI"}
               ]
             }
           ]
@@ -111,7 +108,7 @@
         "bundleAlias": "gpio_widgets",
         "typeAlias": "basic_gpio_control",
         "type": "rpc",
-        "title": "4. Điều khiển RPC Từ xa: Tắt/Bật Còi & Chế độ Chống Trộm (T08, T11)",
+        "title": "4. Điều khiển RPC Từ xa: Bật / Tắt Còi Báo động (T08, T11)",
         "sizeX": 8,
         "sizeY": 5,
         "row": 10,
@@ -120,8 +117,7 @@
           "targetDeviceAliasIds": ["alias_node2_rx"],
           "requestTimeout": 2000,
           "switchPanelObjects": [
-            {"name": "Còi Báo động Buzzer (GPIO10)", "method": "setAlarm"},
-            {"name": "Chế độ Bảo vệ Chống Đột nhập", "method": "setSecurityArmed"}
+            {"name": "Còi Báo động Buzzer (GPIO10)", "method": "setAlarm"}
           ]
         }
       },
@@ -130,7 +126,7 @@
         "bundleAlias": "alarm_widgets",
         "typeAlias": "alarms_table",
         "type": "alarm",
-        "title": "5. Nhật ký Cảnh báo Cấp cứu Té ngã & Xâm nhập (T12, T13)",
+        "title": "5. Nhật ký Cảnh báo Khẩn cấp Té ngã & SOS (T12, T13)",
         "sizeX": 8,
         "sizeY": 5,
         "row": 10,
