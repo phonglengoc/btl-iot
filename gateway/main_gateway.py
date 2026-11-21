@@ -96,11 +96,34 @@ class LocalIoTGatewayService:
         self._downlink_queue: deque[str] = deque(maxlen=64)
         self._events_log_path = self.runtime_dir / "event_log.jsonl"
         self._live_state_path = self.runtime_dir / "live_state.json"
+        self._ui_cmd_path = self.runtime_dir / "ui_commands.jsonl"
         self._last_event_ts: float = 0.0
         self._last_pub_ts: float = 0.0
         self._frame_counter: int = 0
         self._stop_evt = threading.Event()
         self._virtual_sim: VirtualYoloUnoCluster | None = None
+
+    def poll_ui_commands(self) -> None:
+        """Read pending UI RPC commands (`ui_commands.jsonl`) so Alarm ON/OFF works in BOTH serial & simulator modes."""
+        if not self._ui_cmd_path.exists():
+            return
+        try:
+            raw_lines = self._ui_cmd_path.read_text(encoding="utf-8").splitlines()
+            self._ui_cmd_path.unlink(missing_ok=True)
+        except OSError:
+            return
+        for ln in raw_lines:
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                cmd = json.loads(ln)
+                method = str(cmd.get("method", ""))
+                params = cmd.get("params", {})
+                if method:
+                    self.handle_downlink_rpc(self.coreiot.node2_name, method, params)
+            except Exception:
+                continue
 
     def handle_downlink_rpc(self, device: str, method: str, params: dict) -> dict:
         """Forward RPC commands (`setAlarm`, `setFallThreshold`) from CoreIOT / UI to Node 2 (`T08`)."""
@@ -238,21 +261,27 @@ class LocalIoTGatewayService:
 
         steps = 0
         if self.source_mode == "serial":
-            print(f"[Gateway T08] Reading YoloUNO #2 on {self.serial_port} @ {self.serial_baud} bps...")
-            with serial.Serial(self.serial_port, self.serial_baud, timeout=1.0) as ser:
-                while not self._stop_evt.is_set():
-                    while self._downlink_queue:
-                        ser.write(self._downlink_queue.popleft().encode("utf-8"))
-                    line = ser.readline().decode("utf-8", errors="ignore").strip()
-                    if line.startswith("{"):
-                        try:
-                            res = self.process_incoming_packet(json.loads(line))
-                            if res is not None:
-                                steps += 1
-                                if max_steps and steps >= max_steps:
-                                    break
-                        except Exception:
-                            continue
+            print(f"[Gateway T08] Connecting to physical YoloUNO #2 on {self.serial_port} @ {self.serial_baud} bps...")
+            try:
+                with serial.Serial(self.serial_port, self.serial_baud, timeout=0.5) as ser:
+                    print(f"[Gateway T08/T09] Serial connected! Waiting for 20 Hz JSON frames (Model={self.ai_engine.model_name})")
+                    while not self._stop_evt.is_set():
+                        self.poll_ui_commands()
+                        while self._downlink_queue:
+                            ser.write(self._downlink_queue.popleft().encode("utf-8"))
+                            ser.flush()
+                        line = ser.readline().decode("utf-8", errors="ignore").strip()
+                        if line.startswith("{"):
+                            try:
+                                res = self.process_incoming_packet(json.loads(line))
+                                if res is not None:
+                                    steps += 1
+                                    if max_steps and steps >= max_steps:
+                                        break
+                            except Exception:
+                                continue
+            finally:
+                self.coreiot.stop()
         else:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
@@ -278,6 +307,7 @@ class LocalIoTGatewayService:
             f_sock = sock.makefile("r", encoding="utf-8")
             try:
                 while not self._stop_evt.is_set():
+                    self.poll_ui_commands()
                     while self._downlink_queue:
                         sock.sendall(self._downlink_queue.popleft().encode("utf-8"))
                     line = f_sock.readline()

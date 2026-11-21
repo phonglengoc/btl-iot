@@ -32,6 +32,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 RUNTIME_DIR = ROOT_DIR / "gateway" / "runtime"
 LIVE_STATE_FILE = RUNTIME_DIR / "live_state.json"
 CONTROL_FILE = RUNTIME_DIR / "simulator_control.json"
+UI_CMD_FILE = RUNTIME_DIR / "ui_commands.jsonl"
 EVENTS_LOG_FILE = RUNTIME_DIR / "event_log.jsonl"
 MQTT_JOURNAL_FILE = RUNTIME_DIR / "coreiot_mqtt_journal.jsonl"
 TELEGRAM_LOG_FILE = RUNTIME_DIR / "telegram_alerts.jsonl"
@@ -139,6 +140,13 @@ def _write_sim_control(scenario: str, dist: float, nlos: bool, alarm_cmd: bool |
     CONTROL_FILE.write_text(json.dumps(payload), encoding="utf-8")
 
 
+def _send_gateway_rpc(method: str, params: dict) -> None:
+    """Queue a downlink RPC command (`ui_commands.jsonl`) that works on BOTH physical Serial and Simulator!"""
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    with UI_CMD_FILE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"method": method, "params": params}) + "\n")
+
+
 st.set_page_config(
     page_title="HCMUT IoT HK261 - Smart Fall Detection & Room Monitoring",
     page_icon="🏠",
@@ -146,29 +154,38 @@ st.set_page_config(
 )
 
 ensure_background_gateway_running()
+gw_cfg_now = load_gateway_config().get("gateway", {})
+is_serial_hw_mode = gw_cfg_now.get("source_mode", "simulator") == "serial"
 
-# Sidebar: Hardware-Free Simulator & Buzzer RPC Controls (`T08`, `T10`)
+# Sidebar: Hardware / Simulator Status & Live Buzzer RPC Controls (`T08`, `T10`)
 with st.sidebar:
     st.header("🎛️ Gateway Control Panel")
-    selected_scenario = st.selectbox(
-        "Simulation Scenario (Hardware-Free Mode)",
-        options=VirtualYoloUnoCluster.SCENARIOS,
-        index=1,
-        help="Select an activity scenario to test the Random Forest classifier and alerting pipeline.",
-    )
-    sim_dist = st.slider("Tx–Rx Distance (m)", 1.0, 3.5, 2.0, 0.5)
-    sim_nlos = st.checkbox("Through-Wall / Obstacle (NLOS)", value=False)
+    if is_serial_hw_mode:
+        st.success(
+            f"🔌 **Physical Board Mode (USB Serial)**\n\n"
+            f"Port: `{gw_cfg_now.get('serial_port', 'COM4')}` @ `{gw_cfg_now.get('serial_baudrate', 115200)} bps`"
+        )
+    else:
+        st.info("💻 **Simulator Mode** (Set `source_mode: serial` in `gateway/config.yaml` for physical YoloUNO boards)")
+        selected_scenario = st.selectbox(
+            "Simulation Scenario (Hardware-Free Mode)",
+            options=VirtualYoloUnoCluster.SCENARIOS,
+            index=1,
+            help="Select an activity scenario to test the Random Forest classifier and alerting pipeline.",
+        )
+        sim_dist = st.slider("Tx–Rx Distance (m)", 1.0, 3.5, 2.0, 0.5)
+        sim_nlos = st.checkbox("Through-Wall / Obstacle (NLOS)", value=False)
 
-    if st.button("▶ Apply Scenario", type="primary", use_container_width=True):
-        _write_sim_control(selected_scenario, sim_dist, sim_nlos, alarm_cmd=None)
+        if st.button("▶ Apply Scenario", type="primary", use_container_width=True):
+            _write_sim_control(selected_scenario, sim_dist, sim_nlos, alarm_cmd=None)
 
     st.divider()
     st.subheader("🔊 Buzzer Alarm Control (`T08`)")
     c_on, c_off = st.columns(2)
     if c_on.button("🚨 Alarm ON", use_container_width=True):
-        _write_sim_control(selected_scenario, sim_dist, sim_nlos, alarm_cmd=True)
+        _send_gateway_rpc("setAlarm", {"active": True})
     if c_off.button("🔕 Mute Alarm", use_container_width=True):
-        _write_sim_control(selected_scenario, sim_dist, sim_nlos, alarm_cmd=False)
+        _send_gateway_rpc("setAlarm", {"active": False})
 
     st.divider()
     auto_refresh = st.toggle("Auto Refresh (1s)", value=True)

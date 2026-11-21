@@ -126,10 +126,18 @@ def test_end_to_end_gateway_rulechain_rpc_and_n01_history(tmp_path: Path):
         assert tg_file.exists() and len(tg_file.read_text(encoding="utf-8").splitlines()) >= 1
         assert mqtt_file.exists() and gw.coreiot.published_count >= 2
 
-        # 4. Test Downlink RPC (`RPC:ALARM:0`) turning buzzer OFF (`T08`)
+        # 4. Test Downlink RPC (`RPC:ALARM:0`) via CoreIOT and via UI command inbox (`ui_commands.jsonl`) (`T08`)
         rpc_reply = gw.coreiot.inject_simulated_rpc("YoloUNO_Node2_Rx", "setAlarm", False)
         assert rpc_reply["executed_rpc"] == "RPC:ALARM:0"
         assert sim.state["alarm_active"] is False
+
+        (tmp_path / "rt" / "ui_commands.jsonl").write_text(
+            json.dumps({"method": "setAlarm", "params": {"active": True}}) + "\n",
+            encoding="utf-8",
+        )
+        gw.poll_ui_commands()
+        assert sim.state["alarm_active"] is True
+        assert gw._downlink_queue[-1].strip() == "RPC:ALARM:1"
 
         # 5. Test single-frame Serial streaming path (40 single frames -> 1 AI prediction)
         gw._csi_ring.clear()

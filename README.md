@@ -34,6 +34,7 @@ All high-complexity components (INT8 C++ TinyML, GPU 2D-CNN/CUDA, Hampel/Butterw
 ---
 
 ## 2. Repository Structure
+## 2. Repository Structure
 
 ```text
 .
@@ -92,19 +93,42 @@ Open **`http://localhost:8501`** in your browser to view the live Moving-Average
 
 ---
 
-## 4. Flashing Physical YoloUNO (ESP32-S3) Boards
+## 4. Running on Physical YoloUNO (ESP32-S3) Boards
+
+### Hardware Wiring
+- **Node 1 (`YoloUNO #1` — Transmitter):** Connect I2C `DHT20` sensor (`VDD -> 3V3`, `GND -> GND`, `SDA -> GPIO11`, `SCL -> GPIO12`).
+- **Node 2 (`YoloUNO #2` — Receiver):** Connect Buzzer (`GPIO10` + `GND`), RGB WS2812B LED (`GPIO18` + `3V3/5V` + `GND`), and SOS/Mute push-button (`GPIO14` <-> `GND`, internal `INPUT_PULLUP`). Connect Node 2 to the PC via USB-C.
+
+### Step 1: Flash Both Boards via PlatformIO (USB, 115200 bps)
+Node 1 and Node 2 **auto-pair on Wi-Fi Channel 6** out of the box (Broadcast MAC `{0xFF,...}` with `0xC51A` + CRC-8 verification). If multiple teams test in the same room, copy `firmware/include/config.example.h` to `firmware/include/config.h` and pin the exact board MAC addresses printed on Serial at boot.
 
 ```powershell
-# Step 1: Create local private config files from templates (ignored by .gitignore)
-Copy-Item firmware/include/config.example.h firmware/include/config.h
-Copy-Item gateway/config.example.yaml gateway/config.yaml
-# -> Enter real MAC addresses in `config.h`, and CoreIOT/Telegram tokens in `config.yaml`.
-
-# Step 2: Flash firmware directly over USB via PlatformIO (115200 bps, no OTA required)
 pio run -d firmware/node1_tx_env -e yolo_uno -t upload --upload-port COM3
 pio run -d firmware/node2_rx_csi -e yolo_uno -t upload --upload-port COM4
+```
 
-# Step 3: Set `source_mode: "serial"` in `gateway/config.yaml` and start the live Gateway
+### Step 2: Collect Real Room Data & Retrain Random Forest (`T05`, `T09`)
+Place Node 1 and Node 2 ~2–3 meters apart across the monitored room, then record 20–30 real windows per class directly from Node 2 over USB Serial (`COM4`):
+
+```powershell
+.\.venv\Scripts\python ai_training\csi_serial_collector.py --mode serial --port COM4 --label EMPTY --windows 25 --replace
+.\.venv\Scripts\python ai_training\csi_serial_collector.py --mode serial --port COM4 --label STATIONARY --windows 25 --replace
+.\.venv\Scripts\python ai_training\csi_serial_collector.py --mode serial --port COM4 --label WALKING --windows 25 --replace
+.\.venv\Scripts\python ai_training\csi_serial_collector.py --mode serial --port COM4 --label FALL --windows 25 --replace
+
+# Retrain the Random Forest model on your real room dataset (~2 seconds on CPU)
+.\.venv\Scripts\python ai_training\train_gateway_ai.py --dataset-dir ai_training\dataset\real
+```
+
+### Step 3: Switch Gateway to Live USB Serial & Launch Dashboard (`T08`, `T10`, `T15`)
+```powershell
+Copy-Item gateway/config.example.yaml gateway/config.yaml
+# Edit gateway/config.yaml:
+#   source_mode: "serial"
+#   serial_port: "COM4"
+#   gateway_token: "<YOUR_COREIOT_GATEWAY_TOKEN>"
+#   bot_token / chat_id: "<YOUR_TELEGRAM_CREDENTIALS>"
+
 .\.venv\Scripts\python gateway\main_gateway.py --config gateway\config.yaml
 .\.venv\Scripts\streamlit run gateway\streamlit_ui.py
 ```

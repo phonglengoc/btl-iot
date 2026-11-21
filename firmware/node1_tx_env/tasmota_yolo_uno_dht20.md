@@ -17,6 +17,7 @@ Paste the following template under **Configuration -> Configure Other -> Templat
 {"NAME":"YoloUNO-S3-DHT20","GPIO":[0,0,0,0,0,0,0,640,608,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1376,0,0,0,0,0,0,0],"FLAG":0,"BASE":1}
 ```
 *(Note: On Tasmota32-S3, assign `GPIO11 = I2C SDA (1)`, `GPIO12 = I2C SCL (1)`, and `GPIO48 = WS2812 (1)`.)*
+*(Note: On Tasmota32-S3, assign `GPIO11 = I2C SDA (1)`, `GPIO12 = I2C SCL (1)`, and `GPIO48 = WS2812 (1)`.)*
 
 ## 3. Console Commands to Verify I2C (`0x38`) & Publish Telemetry to CoreIOT
 Run these commands in the **Tasmota Console** (redact `<NODE1_COREIOT_TOKEN>` before taking report screenshots):
