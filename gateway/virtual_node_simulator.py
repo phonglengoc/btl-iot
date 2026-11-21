@@ -31,12 +31,12 @@ class VirtualYoloUnoCluster:
     """Emulates Node 1 (DHT20 + ESP-NOW 20 Hz) and Node 2 (CSI Serial + Buzzer/SOS)."""
 
     SCENARIOS = [
-        "EMPTY",           # Phong trong
-        "STATIONARY",      # Nguoi ngoi doc sach / nghi ngoi
-        "SIT_FAST",        # Ngoi xuong ghe nhanh (kiem tra chong bao gia)
-        "WALKING",         # Nguoi di lai binh thuong trong phong
-        "FALL_EMERGENCY",  # Te nga khan cap!
-        "SOS_BUTTON_HOLD", # Nhan giu nut SOS 3 giay tren Node 2
+        "EMPTY",           # Empty quiet room
+        "STATIONARY",      # Person sitting / resting
+        "SIT_FAST",        # Rapid sitting onto a chair (hard negative anti-false-alarm test)
+        "WALKING",         # Person walking normally inside the room
+        "FALL_EMERGENCY",  # Sudden fall emergency!
+        "SOS_BUTTON_HOLD", # Manual SOS button held for 3 seconds on Node 2
     ]
 
     def __init__(

@@ -24,18 +24,18 @@ CLASS_NAMES: list[str] = ["EMPTY", "STATIONARY", "WALKING", "FALL"]
 CLASS_TO_IDX: dict[str, int] = {name: idx for idx, name in enumerate(CLASS_NAMES)}
 
 FEATURE_NAMES: list[str] = [
-    "std_all",            # Do lech chuan trung binh cua 52 song mang trong 2 giay
-    "range_all",          # Bien do dao dong (Max - Min) trung binh tren 52 song mang
-    "max_range_sc",       # (Max - Min) lon nhat trong 52 song mang
-    "activity_mean",      # Muc xao tron song trung binh toan cua so 2 giay
-    "activity_std",       # Do lech chuan muc xao tron theo thoi gian
-    "activity_max",       # Dinh xao tron song lon nhat trong 2 giay
-    "delta_mean",         # Toc do thay doi trung binh giua 2 khung lien tiep
-    "delta_max",          # Buoc nhay dot ngot lon nhat (rat cao khi te nga)
-    "std_first_half",     # Do lech chuan nua dau cua so (0.0s -> 1.0s)
-    "std_second_half",    # Do lech chuan nua sau cua so (1.0s -> 2.0s)
-    "post_peak_std",      # Do lech chuan doan sau dinh va cham (thap khi nam yen sau nga)
-    "peak_to_tail_ratio", # Ti so dinh dot ngot / muc dao dong cuoi cua so
+    "std_all",            # Mean standard deviation across 52 subcarriers over 2 seconds
+    "range_all",          # Mean peak-to-peak amplitude (Max - Min) across 52 subcarriers
+    "max_range_sc",       # Largest (Max - Min) among all 52 subcarriers
+    "activity_mean",      # Mean room disturbance over the 2-second window
+    "activity_std",       # Standard deviation of room disturbance over time
+    "activity_max",       # Peak room disturbance within 2 seconds
+    "delta_mean",         # Mean frame-to-frame amplitude change
+    "delta_max",          # Largest sudden frame-to-frame jump (very high during falls)
+    "std_first_half",     # Standard deviation in first half of window (0.0s -> 1.0s)
+    "std_second_half",    # Standard deviation in second half of window (1.0s -> 2.0s)
+    "post_peak_std",      # Standard deviation after impact peak (low when lying still after fall)
+    "peak_to_tail_ratio", # Ratio of sudden peak jump to tail fluctuation
 ]
 
 

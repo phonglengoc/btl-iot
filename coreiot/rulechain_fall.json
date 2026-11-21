@@ -65,7 +65,7 @@
         "debugMode": true,
         "configuration": {
           "scriptLang": "JS",
-          "jsScript": "if (msg.sos_triggered === true) {\n    msg.alarm_type = 'CRITICAL_SOS_EMERGENCY';\n    msg.text = '[SOS KHAN CAP] Nut SOS tren Node 2 duoc nhan giu! Nhiet do: ' + msg.room_temp_c + 'C.';\n} else {\n    msg.alarm_type = 'CRITICAL_FALL_EMERGENCY';\n    msg.text = '[CANH BAO TE NGA] Phat hien nguoi TE NGA trong phong! Tin cay AI: ' + Math.round(Number(msg.ai_conf || 0) * 100) + '%, Nhiet do: ' + msg.room_temp_c + 'C.';\n}\nreturn {msg: msg, metadata: metadata, msgType: msgType};"
+          "jsScript": "if (msg.sos_triggered === true) {\n    msg.alarm_type = 'CRITICAL_SOS_EMERGENCY';\n    msg.text = '[SOS EMERGENCY] Manual SOS button was held on Node 2! Room Temp: ' + msg.room_temp_c + 'C.';\n} else {\n    msg.alarm_type = 'CRITICAL_FALL_EMERGENCY';\n    msg.text = '[FALL EMERGENCY] Human FALL detected in the monitored room! AI Confidence: ' + Math.round(Number(msg.ai_conf || 0) * 100) + '%, Room Temp: ' + msg.room_temp_c + 'C.';\n}\nreturn {msg: msg, metadata: metadata, msgType: msgType};"
         }
       },
       {

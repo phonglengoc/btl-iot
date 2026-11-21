@@ -1,7 +1,7 @@
 """
 Automated Test Suite for Simplified HCMUT IoT Course Project (HK261).
 
-Verifies all retained components (Bảng A = 10.5 -> 8.0/8.0, Bảng B = N01 +1.0 -> 1.0/1.0):
+Verifies all retained components (Table A = 10.5 -> 8.0/8.0, Table B = N01 +1.0 -> 1.0/1.0):
   - Security hygiene: zero hardcoded tokens in tracked templates & `.gitignore` coverage
   - C++17 ESP-NOW 24-byte packet, CRC-8, DHT20 CRC-8 & 52-subcarrier amplitude extraction (`T01`, `T06`)
   - Simple Moving-Average + Std / (Max - Min) feature extraction & scikit-learn Random Forest AI (`T05`, `T09`)

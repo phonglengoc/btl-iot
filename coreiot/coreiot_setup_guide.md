@@ -1,38 +1,38 @@
-# Hướng dẫn Cấu hình CoreIOT Gateway, Dashboard, RuleChain & Telegram (`T11`, `T12`, `T13`, `T15`)
+# CoreIOT Gateway, Dashboard, RuleChain & Telegram Setup Guide (`T11`, `T12`, `T13`, `T15`)
 
-Tài liệu này hướng dẫn từng bước thiết lập nền tảng **`https://app.coreiot.io`** (dựa trên ThingsBoard) cho hệ thống **Phát hiện Té ngã & Giám sát Phòng ở Thông minh**.
-
----
-
-## 1. Tạo Device Profile & Thiết bị Gateway trên CoreIOT (`T11`, `T15`)
-
-1. Đăng nhập vào `https://app.coreiot.io`.
-2. Vào **Profiles -> Device profiles -> + Add device profile**:
-   - Đặt tên: **`Smart_Room_Fall_Profile`**.
-   - Trong tab **Rule chain**, chọn `Smart_Room_Fall_Alert_RuleChain` (sau khi nhập ở Bước 2).
-3. Vào **Entities -> Devices -> + Add new device**:
-   - Tạo thiết bị **`PC_Local_Fall_Gateway`**, đánh dấu chọn ô **`Is gateway` (`true`)**.
-   - Nhấn **Copy access token** và dán vào `COREIOT_GATEWAY_TOKEN` trong tệp `.env` hoặc `gateway/config.yaml` (không commit lên GitHub!).
-   - Khi chạy `python gateway/main_gateway.py`, hai thiết bị con **`YoloUNO_Node1_Tx`** và **`YoloUNO_Node2_Rx`** sẽ tự động được tạo và đồng bộ dữ liệu qua MQTT (`v1/gateway/connect`, `v1/gateway/telemetry`).
+This guide walks through configuring **`https://app.coreiot.io`** (ThingsBoard-based IoT platform) for the **Smart Indoor Fall Detection & Room Monitoring System**.
 
 ---
 
-## 2. Nhập RuleChain & Kết nối Telegram Bot (`T12`, `T13`)
+## 1. Create Device Profile & Gateway Device on CoreIOT (`T11`, `T15`)
 
-1. Vào **Rule chains -> + Add rule chain -> Import rule chain** và chọn tệp `coreiot/rulechain_fall.json`.
-2. Luồng xử lý rất đơn giản:
-   - Lưu dữ liệu thời gian thực -> Kiểm tra điều kiện `if (msg.csi_state === 'FALL' && msg.ai_conf >= 0.80 || msg.sos_triggered === true)` -> Tạo Alarm trên Dashboard + Gửi tin nhắn Telegram + Gửi lệnh RPC bật còi.
-3. Mở thiết bị `YoloUNO_Node2_Rx` -> tab **Attributes -> Server attributes**, thêm 2 thuộc tính bảo mật:
-   - `telegramBotToken`: Token lấy từ `@BotFather` trên Telegram.
-   - `telegramChatId`: ID nhóm chat hoặc người thân nhận cảnh báo.
-4. Nhấn **Apply changes** để lưu RuleChain.
+1. Sign in at `https://app.coreiot.io`.
+2. Navigate to **Profiles -> Device profiles -> + Add device profile**:
+   - Name: **`Smart_Room_Fall_Profile`**.
+   - In the **Rule chain** tab, assign `Smart_Room_Fall_Alert_RuleChain` (after importing it in Step 2).
+3. Navigate to **Entities -> Devices -> + Add new device**:
+   - Create a device named **`PC_Local_Fall_Gateway`** and check **`Is gateway` (`true`)**.
+   - Click **Copy access token** and paste it into `COREIOT_GATEWAY_TOKEN` inside `.env` or `gateway/config.yaml` (never commit real tokens to GitHub).
+   - When you run `python gateway/main_gateway.py`, both child devices (**`YoloUNO_Node1_Tx`** and **`YoloUNO_Node2_Rx`**) are automatically registered and synchronized over MQTT (`v1/gateway/connect`, `v1/gateway/telemetry`).
 
 ---
 
-## 3. Nhập Giao diện Dashboard Giám sát & Điều khiển Còi (`T11`)
+## 2. Import RuleChain & Configure Telegram Bot (`T12`, `T13`)
 
-1. Vào **Dashboards -> + Add dashboard -> Import dashboard** và chọn tệp `coreiot/dashboard_template.json`.
-2. Mở Dashboard vừa nhập -> nhấn **Edit mode -> Entity aliases**:
-   - Gán `alias_node1_tx` vào thiết bị `YoloUNO_Node1_Tx`.
-   - Gán `alias_node2_rx` vào thiết bị `YoloUNO_Node2_Rx`.
-3. Lưu Dashboard để theo dõi nhiệt độ/độ ẩm DHT20, trạng thái AI, đồ thị sóng CSI và nút bấm RPC bật/tắt còi báo động từ xa.
+1. Navigate to **Rule chains -> + Add rule chain -> Import rule chain** and upload `coreiot/rulechain_fall.json`.
+2. Alert pipeline overview:
+   - Persist incoming time-series telemetry -> Check condition `(msg.csi_state === 'FALL' && msg.ai_conf >= 0.80) || msg.sos_triggered === true` -> Create CoreIOT Alarm + Send Telegram Bot message + Send downlink RPC to turn ON the buzzer.
+3. Open device `YoloUNO_Node2_Rx` -> **Attributes -> Server attributes**, and add two private attributes:
+   - `telegramBotToken`: Bot token issued by `@BotFather` on Telegram.
+   - `telegramChatId`: Target caregiver/family chat ID.
+4. Click **Apply changes** to activate the RuleChain.
+
+---
+
+## 3. Import Remote Monitoring & RPC Control Dashboard (`T11`)
+
+1. Navigate to **Dashboards -> + Add dashboard -> Import dashboard** and upload `coreiot/dashboard_template.json`.
+2. Open the imported dashboard -> click **Edit mode -> Entity aliases**:
+   - Bind `alias_node1_tx` to `YoloUNO_Node1_Tx`.
+   - Bind `alias_node2_rx` to `YoloUNO_Node2_Rx`.
+3. Save the dashboard to monitor live DHT20 temperature/humidity, AI fall classification, CSI wave trends, alarm logs, and remote buzzer RPC switches.

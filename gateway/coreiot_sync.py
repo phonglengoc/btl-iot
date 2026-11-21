@@ -47,8 +47,8 @@ def evaluate_coreiot_rulechain_logic(telemetry_values: dict) -> dict:
             "alarm_type": "CRITICAL_SOS_EMERGENCY",
             "ai_conf": round(ai_conf, 4),
             "telegram_text": (
-                f"[SOS KHAN CAP] Nut SOS tren Node 2 vua duoc nhan giu! "
-                f"Nhiet do phong: {temp_c:.1f}C, Do am: {humi_rh:.1f}%. Vui long kiem tra ngay!"
+                f"[SOS EMERGENCY] Manual SOS button was held on Node 2! "
+                f"Room Temp: {temp_c:.1f}C, Humidity: {humi_rh:.1f}%. Please check immediately!"
             ),
         }
 
@@ -58,9 +58,9 @@ def evaluate_coreiot_rulechain_logic(telemetry_values: dict) -> dict:
             "alarm_type": "CRITICAL_FALL_EMERGENCY",
             "ai_conf": round(ai_conf, 4),
             "telegram_text": (
-                f"[CANH BAO TE NGA] Phat hien nguoi bi TE NGA trong phong! "
-                f"Do tin cay AI: {round(ai_conf * 100)}%, "
-                f"Nhiet do: {temp_c:.1f}C, Do am: {humi_rh:.1f}%. Vui long kiem tra ngay!"
+                f"[FALL EMERGENCY] Human FALL detected in the monitored room! "
+                f"AI Confidence: {round(ai_conf * 100)}%, "
+                f"Room Temp: {temp_c:.1f}C, Humidity: {humi_rh:.1f}%. Please check immediately!"
             ),
         }
 

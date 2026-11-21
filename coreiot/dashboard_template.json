@@ -34,7 +34,7 @@
         "bundleAlias": "cards",
         "typeAlias": "simple_card",
         "type": "latest",
-        "title": "1. Trạng thái Phòng & Phân loại Té ngã AI (T09)",
+        "title": "1. Room Status & AI Fall Classification (T09)",
         "sizeX": 8,
         "sizeY": 4,
         "row": 0,
@@ -45,10 +45,10 @@
               "type": "entity",
               "entityAliasId": "alias_node2_rx",
               "dataKeys": [
-                {"name": "csi_state", "type": "timeseries", "label": "Trạng thái AI (Random Forest)"},
-                {"name": "ai_conf", "type": "timeseries", "label": "Độ tin cậy AI"},
-                {"name": "signal_std", "type": "timeseries", "label": "Độ lệch chuẩn sóng CSI (Std)"},
-                {"name": "signal_range", "type": "timeseries", "label": "Biên độ dao động (Max - Min)"}
+                {"name": "csi_state", "type": "timeseries", "label": "AI State (Random Forest)"},
+                {"name": "ai_conf", "type": "timeseries", "label": "AI Confidence"},
+                {"name": "signal_std", "type": "timeseries", "label": "CSI Signal Std"},
+                {"name": "signal_range", "type": "timeseries", "label": "Peak-to-Peak (Max - Min)"}
               ]
             }
           ]
@@ -59,7 +59,7 @@
         "bundleAlias": "cards",
         "typeAlias": "simple_card",
         "type": "latest",
-        "title": "2. Cảm biến Môi trường I2C DHT20 & Kênh ESP-NOW (T01, T06)",
+        "title": "2. I2C DHT20 Environment & ESP-NOW Link (T01, T06)",
         "sizeX": 8,
         "sizeY": 4,
         "row": 0,
@@ -70,9 +70,9 @@
               "type": "entity",
               "entityAliasId": "alias_node1_tx",
               "dataKeys": [
-                {"name": "room_temp_c", "type": "timeseries", "label": "Nhiệt độ phòng (°C)", "units": "°C"},
-                {"name": "room_humi_rh", "type": "timeseries", "label": "Độ ẩm tương đối (%RH)", "units": "%"},
-                {"name": "pkt_loss_pct", "type": "timeseries", "label": "Tỷ lệ mất gói ESP-NOW (%)", "units": "%"}
+                {"name": "room_temp_c", "type": "timeseries", "label": "Room Temperature (°C)", "units": "°C"},
+                {"name": "room_humi_rh", "type": "timeseries", "label": "Relative Humidity (%RH)", "units": "%"},
+                {"name": "pkt_loss_pct", "type": "timeseries", "label": "ESP-NOW Packet Loss (%)", "units": "%"}
               ]
             }
           ]
@@ -83,7 +83,7 @@
         "bundleAlias": "charts",
         "typeAlias": "basic_timeseries",
         "type": "timeseries",
-        "title": "3. Đồ thị Dao động Sóng CSI & Độ tin cậy AI theo Thời gian thực",
+        "title": "3. Real-Time CSI Fluctuation & AI Confidence Chart",
         "sizeX": 16,
         "sizeY": 6,
         "row": 4,
@@ -95,9 +95,9 @@
               "type": "entity",
               "entityAliasId": "alias_node2_rx",
               "dataKeys": [
-                {"name": "signal_std", "type": "timeseries", "label": "Độ lệch chuẩn sóng (Std)"},
-                {"name": "signal_range", "type": "timeseries", "label": "Biên độ (Max - Min)"},
-                {"name": "ai_conf", "type": "timeseries", "label": "Độ tin cậy AI"}
+                {"name": "signal_std", "type": "timeseries", "label": "CSI Signal Std"},
+                {"name": "signal_range", "type": "timeseries", "label": "Peak-to-Peak (Max - Min)"},
+                {"name": "ai_conf", "type": "timeseries", "label": "AI Confidence"}
               ]
             }
           ]
@@ -108,7 +108,7 @@
         "bundleAlias": "gpio_widgets",
         "typeAlias": "basic_gpio_control",
         "type": "rpc",
-        "title": "4. Điều khiển RPC Từ xa: Bật / Tắt Còi Báo động (T08, T11)",
+        "title": "4. Remote RPC Control: Buzzer Alarm ON / OFF (T08, T11)",
         "sizeX": 8,
         "sizeY": 5,
         "row": 10,
@@ -117,7 +117,7 @@
           "targetDeviceAliasIds": ["alias_node2_rx"],
           "requestTimeout": 2000,
           "switchPanelObjects": [
-            {"name": "Còi Báo động Buzzer (GPIO10)", "method": "setAlarm"}
+            {"name": "Buzzer Alarm (GPIO10)", "method": "setAlarm"}
           ]
         }
       },
@@ -126,7 +126,7 @@
         "bundleAlias": "alarm_widgets",
         "typeAlias": "alarms_table",
         "type": "alarm",
-        "title": "5. Nhật ký Cảnh báo Khẩn cấp Té ngã & SOS (T12, T13)",
+        "title": "5. Emergency Fall & SOS Alarm Log (T12, T13)",
         "sizeX": 8,
         "sizeY": 5,
         "row": 10,
@@ -136,10 +136,10 @@
             "type": "entity",
             "entityAliasId": "alias_node2_rx",
             "dataKeys": [
-              {"name": "createdTime", "type": "alarm", "label": "Thời gian"},
-              {"name": "type", "type": "alarm", "label": "Loại cảnh báo"},
-              {"name": "severity", "type": "alarm", "label": "Mức độ"},
-              {"name": "status", "type": "alarm", "label": "Trạng thái"}
+              {"name": "createdTime", "type": "alarm", "label": "Timestamp"},
+              {"name": "type", "type": "alarm", "label": "Alarm Type"},
+              {"name": "severity", "type": "alarm", "label": "Severity"},
+              {"name": "status", "type": "alarm", "label": "Status"}
             ]
           }
         }

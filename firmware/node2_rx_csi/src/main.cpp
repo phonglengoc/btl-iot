@@ -1,14 +1,14 @@
 /**
- * @file main.cpp (Node 2 - YoloUNO #2: Thu song Wi-Fi CSI, gui USB Serial & Bat/Tat Coi bao dong)
- * @brief Ma cong nghe dam nhiem:
- *   - T06 (1.5d): Nhan goi tin ESP-NOW (nhiet do/do am DHT20) & thu 52 gia tri bien do song Wi-Fi CSI
- *                 tu Node 1 o tan so 20 Hz.
- *   - T08 (1.0d): Gui dong JSONL qua cong USB Serial 115200 bps ve may tinh PC Gateway va
- *                 nhan lenh dieu khien coi `RPC:ALARM:1` / `RPC:ALARM:0`.
+ * @file main.cpp (Node 2 - YoloUNO #2: Wi-Fi CSI Receiver, USB Serial Bridge & Local Alarm)
+ * @brief Covered course components:
+ *   - T06 (1.5 pt): Receive 20 Hz ESP-NOW packets (DHT20 temperature/humidity) and extract
+ *                   52 active Wi-Fi CSI subcarrier amplitudes from Node 1.
+ *   - T08 (1.0 pt): Stream JSONL frames over 115200 bps USB Serial to PC Local Gateway
+ *                   and execute downlink buzzer commands (`RPC:ALARM:1` / `RPC:ALARM:0`).
  *
- * Phan cung gan tren Node 2:
- *   - Coi Buzzer (GPIO10), Den LED WS2812B (GPIO18), Nut nhan SOS / Tat coi (GPIO14).
- *   - Khong dung BLE, khong dung TinyML C++, khong dung Web Server va khong dung OTA -> code sieu gon!
+ * Connected hardware on Node 2:
+ *   - Buzzer (GPIO10), WS2812B RGB LED (GPIO18), SOS / Mute Button (GPIO14).
+ *   - No BLE, no TinyML C++, no Embedded Web Server, and no OTA — clean and minimal firmware!
  */
 
 #include <Arduino.h>
@@ -25,7 +25,7 @@
 
 #include "csi_protocol.h"
 
-// Khung du lieu CSI moi nhat dua tu callback sang loop() bang hang doi 1 phan tu (khong can spinlock)
+// Latest CSI frame passed from ISR callback to loop() via a 1-slot queue (no manual spinlocks)
 typedef struct {
     int8_t rssi;
     int8_t iq_raw[CSI_RAW_IQ_BYTES];
@@ -33,41 +33,41 @@ typedef struct {
 
 static QueueHandle_t g_csiQueue = nullptr;
 
-// Trang thai nhiet am & goi tin nhan tu Node 1
+// Latest DHT20 readings & packet stats received from Node 1
 static volatile float    g_tempC         = 27.5f;
 static volatile float    g_humiRh        = 65.0f;
 static volatile uint32_t g_lastSeqId     = 0;
 static volatile uint32_t g_rxPackets     = 0;
 static volatile uint32_t g_missedPackets = 0;
 
-// Trang thai coi bao dong & nut SOS
+// Local buzzer alarm & SOS button state
 static bool     g_alarmActive    = false;
 static bool     g_sosTriggered   = false;
 static bool     g_btnWasLow      = false;
 static uint32_t g_btnPressStart  = 0;
 
 // ============================================================================
-// 1. Dieu khien phan cung Coi Buzzer (GPIO10) & Den LED WS2812B (GPIO18)
+// 1. Local Alarm Hardware Control: Buzzer (GPIO10) & WS2812B LED (GPIO18)
 // ============================================================================
 static void setAlarmHardware(bool active) {
     g_alarmActive = active;
     if (active) {
         tone(NODE2_BUZZER_PIN, NODE2_BUZZER_FREQ_HZ);
         #ifdef RGB_BUILTIN
-        neopixelWrite(NODE2_NEOPIXEL_PIN, 255, 0, 0); // Do: Dang bao dong!
+        neopixelWrite(NODE2_NEOPIXEL_PIN, 255, 0, 0); // Red: Emergency alarm active!
         #endif
     } else {
         g_sosTriggered = false;
         noTone(NODE2_BUZZER_PIN);
         digitalWrite(NODE2_BUZZER_PIN, LOW);
         #ifdef RGB_BUILTIN
-        neopixelWrite(NODE2_NEOPIXEL_PIN, 0, 48, 12); // Xanh la: An toan
+        neopixelWrite(NODE2_NEOPIXEL_PIN, 0, 48, 12); // Green: Room safe
         #endif
     }
 }
 
 // ============================================================================
-// 2. Callback nhan goi tin ESP-NOW tu Node 1 (Nhiet do & Do am DHT20) - T06
+// 2. ESP-NOW Receive Callback (DHT20 Temperature & Humidity from Node 1) - T06
 // ============================================================================
 static void onEspNowDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
     if (!mac || !incomingData || len < (int)sizeof(csi_ping_packet_t)) return;
@@ -91,7 +91,7 @@ static void onEspNowDataRecv(const uint8_t* mac, const uint8_t* incomingData, in
 }
 
 // ============================================================================
-// 3. Callback thu 128 byte Wi-Fi CSI tang vat ly tu Node 1
+// 3. Wi-Fi PHY CSI Callback (Extracts 128 raw I/Q bytes from Node 1 packets)
 // ============================================================================
 static void IRAM_ATTR wifi_csi_rx_cb(void* /*ctx*/, wifi_csi_info_t* info) {
     if (!info || !info->buf || info->len < (int)CSI_RAW_IQ_BYTES) return;
@@ -109,7 +109,7 @@ static void IRAM_ATTR wifi_csi_rx_cb(void* /*ctx*/, wifi_csi_info_t* info) {
 }
 
 // ============================================================================
-// 4. Xu ly nut nhan SOS (giu 3s -> bat SOS; nhan ngan -> tat coi)
+// 4. SOS / Mute Button Handler (Hold 3s -> SOS Alarm; Short Press -> Mute)
 // ============================================================================
 static void pollSosButton() {
     const uint32_t now = millis();
@@ -126,14 +126,14 @@ static void pollSosButton() {
     } else if (!isLow && g_btnWasLow) {
         uint32_t heldMs = now - g_btnPressStart;
         if (heldMs >= 40u && heldMs < NODE2_SOS_HOLD_MS) {
-            setAlarmHardware(false); // Nhan nhanh -> tat bao dong tai cho
+            setAlarmHardware(false); // Short press -> silence alarm locally
         }
         g_btnWasLow = false;
     }
 }
 
 // ============================================================================
-// 5. Doc lenh RPC tu PC Local Gateway qua cong USB Serial (T08)
+// 5. Read Downlink RPC Commands from PC Local Gateway over USB Serial (T08)
 // ============================================================================
 static void pollSerialCommands() {
     while (Serial.available()) {
@@ -147,7 +147,7 @@ static void pollSerialCommands() {
 }
 
 // ============================================================================
-// 6. Khoi dong Node 2
+// 6. Node 2 Setup
 // ============================================================================
 void setup() {
     Serial.begin(SERIAL_BAUDRATE);
@@ -160,14 +160,14 @@ void setup() {
 
     g_csiQueue = xQueueCreate(1, sizeof(csi_frame_t));
 
-    // Cau hinh Wi-Fi Station kenh co dinh 6 de nhan ESP-NOW & CSI (khong can router)
+    // Configure Wi-Fi Station on fixed channel 6 for peer-to-peer ESP-NOW & CSI (no router needed)
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     esp_wifi_set_ps(WIFI_PS_NONE);
     esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
     esp_wifi_set_channel(CSI_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
 
-    // Kich hoat che do doc 64 song mang Wi-Fi CSI
+    // Enable 64-subcarrier Wi-Fi CSI capture
     wifi_csi_config_t csiCfg{};
     csiCfg.lltf_en           = true;
     csiCfg.htltf_en          = true;
@@ -188,7 +188,7 @@ void setup() {
 }
 
 // ============================================================================
-// 7. Vong lap chinh: Doc nut SOS + Doc lenh RPC + Gui 52 bien do CSI len PC
+// 7. Main Loop: Poll SOS Button + Poll Serial RPC + Stream 52 CSI Amplitudes
 // ============================================================================
 void loop() {
     pollSosButton();
@@ -204,7 +204,7 @@ void loop() {
                             ? (100.0f * (float)g_missedPackets / (float)totalExpected)
                             : 0.0f;
 
-        // Xuat 1 dong JSON gon nhe qua Serial 115200 bps (~360 byte @ 20 Hz = ~7.2 KB/s)
+        // Emit one compact JSONL line over 115200 bps Serial (~360 bytes @ 20 Hz = ~7.2 KB/s)
         Serial.printf(
             "{\"ts_ms\":%lu,\"temp_c\":%.2f,\"humi_rh\":%.2f,"
             "\"alarm_active\":%s,\"sos\":%s,\"rssi\":%d,"
