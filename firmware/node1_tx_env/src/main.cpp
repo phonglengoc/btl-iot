@@ -158,7 +158,8 @@ void setup() {
                 sensorOk ? "OK" : "NOT_FOUND_USING_DEFAULT");
 
   // Configure Wi-Fi Station on fixed channel 6 for peer-to-peer ESP-NOW (no
-  // router needed)
+  // router needed). Force 802.11n OFDM (MCS0_LGI) instead of default 802.11b
+  // 1 Mbps DSSS so Node 2 PHY always generates 64-subcarrier LLTF CSI frames!
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   esp_wifi_set_ps(WIFI_PS_NONE);
@@ -166,6 +167,12 @@ void setup() {
                                          WIFI_PROTOCOL_11N);
   esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
   esp_wifi_set_channel(CSI_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
+#if !defined(ESP_IDF_VERSION) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 1, 0))
+  esp_err_t rateErr =
+      esp_wifi_config_espnow_rate(WIFI_IF_STA, WIFI_PHY_RATE_MCS0_LGI);
+  Serial.printf("[NODE1-T06] ESP-NOW OFDM Rate (MCS0_LGI): %s\n",
+                rateErr == ESP_OK ? "OK" : "ERR");
+#endif
 
   printMacForConfig("NODE1-T06");
   Serial.printf("[NODE1-T06] Channel=%d | Rate=%d Hz | Period=%u ms\n",

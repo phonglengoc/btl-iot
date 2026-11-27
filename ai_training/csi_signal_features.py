@@ -36,6 +36,12 @@ FEATURE_NAMES: list[str] = [
     "std_second_half",    # Standard deviation in second half of window (1.0s -> 2.0s)
     "post_peak_std",      # Standard deviation after impact peak (low when lying still after fall)
     "peak_to_tail_ratio", # Ratio of sudden peak jump to tail fluctuation
+    "rel_std",            # Scale-invariant CV: std_all / (mean_amp + 1) (AGC-independent)
+    "rel_range",          # Scale-invariant peak-to-peak range / (mean_amp + 1)
+    "rel_delta_max",      # Scale-invariant peak acceleration jump / (mean_amp + 1)
+    "burst_crest_factor", # Impulsiveness: activity_max / median(activity) (high for FALL, low for WALKING)
+    "active_frac",        # Fraction of frames > 45% peak activity (high for WALKING, low for FALL)
+    "raw_lag1_corr",      # Mean per-subcarrier lag-1 autocorrelation (~0 EMPTY noise, high for human motion)
 ]
 
 
@@ -68,11 +74,13 @@ def compute_disturbance_curve(amps: np.ndarray, smooth_win: int = SMOOTH_WINDOW)
 
 def extract_statistical_features(amps_40x52: np.ndarray, smooth_win: int = SMOOTH_WINDOW) -> np.ndarray:
     """
-    Extract 12 simple statistical features from a 2.0-second CSI window (40, 52)
+    Extract 18 statistical & scale-invariant physics features from a 2.0-second CSI window (40, 52)
     for scikit-learn Random Forest / MLP classification (`T09`).
     """
-    smooth = moving_average_smooth(amps_40x52, window_size=smooth_win)  # (40, 52)
+    raw = np.asarray(amps_40x52, dtype=np.float32)
+    smooth = moving_average_smooth(raw, window_size=smooth_win)  # (40, 52)
     n_frames = smooth.shape[0]
+    mean_amp = float(np.mean(smooth))
 
     # 1. Global Standard Deviation & (Max - Min) across the 52 subcarriers
     sc_std = np.std(smooth, axis=0)
@@ -99,14 +107,29 @@ def extract_statistical_features(amps_40x52: np.ndarray, smooth_win: int = SMOOT
     std_first_half = float(np.mean(np.std(smooth[:mid], axis=0)))
     std_second_half = float(np.mean(np.std(smooth[mid:], axis=0)))
 
-    # 5. Post-peak stillness (key intuition for FALL: sharp jump followed by floor stillness!)
-    post_start = min(n_frames - 8, peak_idx + 5)
+    # 5. Fast post-peak stillness (key intuition for FALL: sharp jump followed by stillness!)
+    # Uses 0.40s tail (8 frames @ 20 Hz) so falls near t=1.2-1.55s trigger ~1s faster.
+    post_start = min(n_frames - 7, peak_idx + 4)
     post_segment = smooth[post_start:]
     post_peak_std = float(np.mean(np.std(post_segment, axis=0)))
 
-    tail_segment = smooth[-10:]  # Last 0.5 seconds (10 frames @ 20 Hz)
+    tail_segment = smooth[-8:]  # Last 0.40 seconds (8 frames @ 20 Hz)
     tail_std = float(np.mean(np.std(tail_segment, axis=0)))
-    peak_to_tail_ratio = float(delta_max / (tail_std + 0.15))
+    peak_to_tail_ratio = float(delta_max / (tail_std + 0.12))
+
+    # 6. Scale-invariant & temporal-shape features (generalize across rooms & ESP32-S3 AGC levels)
+    denom_amp = mean_amp + 1.0
+    rel_std = float(std_all / denom_amp)
+    rel_range = float(range_all / denom_amp)
+    rel_delta_max = float(delta_max / denom_amp)
+    burst_crest_factor = float(activity_max / (float(np.median(activity)) + 0.05))
+    active_frac = float(np.mean(activity > (0.45 * (activity_max + 1e-6))))
+
+    # Per-subcarrier lag-1 autocorrelation on raw frames: ~0 for EMPTY white noise, high for human motion
+    raw_c = raw - np.mean(raw, axis=0, keepdims=True)
+    num = np.sum(raw_c[:-1] * raw_c[1:], axis=0)
+    den = np.sum(raw_c[:-1] ** 2, axis=0) + 1e-4
+    raw_lag1_corr = float(np.mean(np.clip(num / den, -1.0, 1.0)))
 
     return np.array(
         [
@@ -122,6 +145,12 @@ def extract_statistical_features(amps_40x52: np.ndarray, smooth_win: int = SMOOT
             std_second_half,
             post_peak_std,
             peak_to_tail_ratio,
+            rel_std,
+            rel_range,
+            rel_delta_max,
+            burst_crest_factor,
+            active_frac,
+            raw_lag1_corr,
         ],
         dtype=np.float32,
     )

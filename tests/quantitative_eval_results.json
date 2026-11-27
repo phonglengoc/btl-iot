@@ -1,32 +1,32 @@
 {
-  "model": "RandomForestClassifier (scikit-learn CPU)",
+  "model": "RandomForestClassifier (scikit-learn CPU, 18 features)",
   "total_windows_evaluated": 800,
-  "overall_accuracy_pct": 98.88,
-  "overall_fall_precision_pct": 100.0,
-  "overall_fall_recall_pct": 100.0,
-  "overall_fall_f1_pct": 100.0,
+  "overall_accuracy_pct": 98.5,
+  "overall_fall_precision_pct": 98.99,
+  "overall_fall_recall_pct": 98.5,
+  "overall_fall_f1_pct": 98.75,
   "by_distance": {
     "LOS_1.0m": {
       "trials_total": 200,
-      "accuracy_pct": 98.0,
+      "accuracy_pct": 99.5,
       "fall_f1_pct": 100.0
     },
     "LOS_2.0m": {
       "trials_total": 200,
       "accuracy_pct": 99.5,
-      "fall_f1_pct": 100.0
+      "fall_f1_pct": 99.01
     },
     "LOS_3.0m": {
       "trials_total": 200,
-      "accuracy_pct": 100.0,
+      "accuracy_pct": 98.0,
       "fall_f1_pct": 100.0
     },
     "NLOS_2.5m_Wall": {
       "trials_total": 200,
-      "accuracy_pct": 98.0,
-      "fall_f1_pct": 100.0
+      "accuracy_pct": 97.0,
+      "fall_f1_pct": 95.92
     }
   },
   "sit_fast_specificity_pct": 100.0,
-  "cpu_infer_mean_ms": 8.598
+  "cpu_infer_mean_ms": 5.81
 }

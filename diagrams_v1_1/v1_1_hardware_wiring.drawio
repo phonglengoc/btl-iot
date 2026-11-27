@@ -1,0 +1,59 @@
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="Hardware-Wiring-v1.1">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1370" pageHeight="490" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="htitle" value="Hardware Wiring &amp; GPIO Pin Mapping -- Dual YoloUNO (ESP32-S3) Setup (v1.1)" style="text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="210" y="15" width="940" height="30" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="grp1" value="Node 1 -- Transmitter &amp; Environment (YoloUNO #1)" style="swimlane;startSize=32;rounded=1;fillColor=#f0f9ff;strokeColor=#0284c7;fontStyle=1;fontSize=12;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="65" width="580" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="pwr1" value="USB-C 5V / 1A&#10;Power Adapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;" vertex="1" parent="grp1">
+          <mxGeometry x="30" y="60" width="140" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="dht1" value="DHT20 / AHT20&#10;I2C Sensor (0x38)&#10;VDD | SDA | GND | SCL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="grp1">
+          <mxGeometry x="30" y="210" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="mcu1" value="YoloUNO #1 (ESP32-S3)&#10;&#10;3V3 / GND Power Rail&#10;GPIO11 (I2C SDA)&#10;GPIO12 (I2C SCL, 100 kHz)&#10;GPIO48 (Onboard WS2812B)&#10;2.4 GHz Antenna (Ch. 6)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;" vertex="1" parent="grp1">
+          <mxGeometry x="320" y="85" width="230" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="w1_pwr" value="5V USB-C" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;strokeColor=#d97706;exitX=1;exitY=0.5;entryX=0;entryY=0.2;" edge="1" parent="grp1" source="pwr1" target="mcu1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="w1_i2c" value="3V3, GND&#10;SDA=GPIO11&#10;SCL=GPIO12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;strokeColor=#15803d;exitX=1;exitY=0.5;entryX=0;entryY=0.72;" edge="1" parent="grp1" source="dht1" target="mcu1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        
+        <mxCell id="grp2" value="Node 2 -- CSI Receiver &amp; Local Alarm (YoloUNO #2)" style="swimlane;startSize=32;rounded=1;fillColor=#faf5ff;strokeColor=#7e22ce;fontStyle=1;fontSize=12;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="710" y="65" width="630" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="mcu2" value="YoloUNO #2 (ESP32-S3)&#10;&#10;2.4 GHz PHY CSI Capture&#10;GPIO10 (PWM Buzzer)&#10;GPIO18 (WS2812B Data)&#10;GPIO14 (INPUT_PULLUP)&#10;USB-C Serial (115200 bps)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;" vertex="1" parent="grp2">
+          <mxGeometry x="30" y="85" width="225" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="buz2" value="KY-012 Active Buzzer&#10;PWM 2.7 kHz Alarm" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;" vertex="1" parent="grp2">
+          <mxGeometry x="395" y="55" width="205" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="rgb2" value="4-LED WS2812B Strip&#10;Green=Safe | Amber=Walk | Red=Alert" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="grp2">
+          <mxGeometry x="395" y="140" width="205" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="sos2" value="SOS / Mute Push Button&#10;Hold 3s = SOS | Tap = Mute" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="grp2">
+          <mxGeometry x="395" y="228" width="205" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="pc2" value="PC Local IoT Gateway&#10;USB-C Data + Power (COM4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;" vertex="1" parent="grp2">
+          <mxGeometry x="395" y="312" width="205" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="w2_b" value="GPIO10 + GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;strokeColor=#dc2626;exitX=1;exitY=0.16;entryX=0;entryY=0.5;" edge="1" parent="grp2" source="mcu2" target="buz2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="w2_r" value="GPIO18 + 3V3/5V" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;strokeColor=#d97706;exitX=1;exitY=0.40;entryX=0;entryY=0.5;" edge="1" parent="grp2" source="mcu2" target="rgb2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="w2_s" value="GPIO14 &lt;-&gt; GND" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;strokeColor=#475569;exitX=1;exitY=0.66;entryX=0;entryY=0.5;" edge="1" parent="grp2" source="mcu2" target="sos2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="w2_p" value="USB-C 115200 bps" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;strokeColor=#1d4ed8;exitX=1;exitY=0.88;entryX=0;entryY=0.5;startArrow=classic;startFill=1;" edge="1" parent="grp2" source="mcu2" target="pc2"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        
+        <mxCell id="w_rf" value="ESP-NOW 20 Hz&#10;Ch. 6 (2437 MHz)&#10;1.0 - 3.0 m" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;dashed=1;strokeColor=#2563eb;strokeWidth=2.2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="mcu1" target="mcu2"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

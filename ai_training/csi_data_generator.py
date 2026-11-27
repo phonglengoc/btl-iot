@@ -49,91 +49,113 @@ def synthesize_csi_window(
     # Attenuation factor for distance and wall obstacle (NLOS)
     dist_scale = (1.8 / max(0.9, dist)) ** 0.65 * (0.78 if is_nlos else 1.0)
 
+    # Multi-scale ESP32-S3 AGC baseline coverage:
+    # Covers BOTH real close-range YoloUNO AGC (11.0-18.0) and mid/far-range rooms (18.0-34.0)
+    base_level = float(rng.uniform(11.0, 34.0))
+    agc_scale = base_level / 28.0
+    motion_scale = 0.55 + 0.45 * agc_scale
+
     # Static baseline across 52 subcarriers (smooth frequency shape of the room)
     sc_axis = np.linspace(0.0, 1.0, NUM_SUBCARRIERS)
     baseline = (
-        rng.uniform(24.0, 34.0)
-        + 4.0 * np.sin(2.0 * np.pi * rng.uniform(0.8, 2.2) * sc_axis + rng.uniform(0, 6.28))
+        base_level
+        + (2.0 + 2.0 * agc_scale) * np.sin(2.0 * np.pi * rng.uniform(0.8, 2.2) * sc_axis + rng.uniform(0, 6.28))
     )
-    # Random per-subcarrier sensitivity weights
+    # Random per-subcarrier sensitivity weights + multipath constructive/destructive sign diversity
     sc_weights = 0.65 + 0.70 * np.abs(
         np.sin(np.pi * rng.uniform(1.0, 3.0) * sc_axis + rng.uniform(0, 6.28))
     )
+    if rng.random() < 0.50:
+        sc_weights = sc_weights * rng.choice([-1.0, 1.0], size=NUM_SUBCARRIERS)
 
     amps = np.tile(baseline, (WINDOW_SAMPLES, 1))
     subtype = hard_negative or "standard"
 
     if label == "EMPTY":
-        # Only tiny thermal noise (plus very subtle AC/fan vibration in 20% of cases)
+        # Thermal/RF quantization floor matching real ESP32-S3 idle room (signal_std ~ 0.22-0.46)
         if hard_negative == "fan_airflow" or (hard_negative is None and rng.random() < 0.20):
             subtype = "fan_airflow"
-            fan_wave = 0.45 * np.sin(2.0 * np.pi * rng.uniform(0.6, 1.2) * t)
+            fan_wave = 0.35 * motion_scale * np.sin(2.0 * np.pi * rng.uniform(0.6, 1.2) * t)
             amps += fan_wave[:, None] * sc_weights[None, :]
-        noise_std = rng.uniform(0.30, 0.65)
+        noise_std = rng.uniform(0.32, 0.72)
 
     elif label == "STATIONARY":
-        # Gentle chest breathing (0.20 - 0.48 Hz)
-        f_breath = rng.uniform(0.20, 0.48)
-        breath = rng.uniform(0.9, 2.0) * dist_scale * np.sin(2.0 * np.pi * f_breath * t + rng.uniform(0, 6.28))
+        # Gentle chest breathing / seated typing (0.20 - 0.55 Hz, temporally correlated across frames)
+        f_breath = rng.uniform(0.20, 0.55)
+        breath = (
+            rng.uniform(0.85, 2.10)
+            * dist_scale
+            * motion_scale
+            * np.sin(2.0 * np.pi * f_breath * t + rng.uniform(0, 6.28))
+        )
         amps += breath[:, None] * sc_weights[None, :]
 
-        if hard_negative == "sit_fast" or (hard_negative is None and rng.random() < 0.22):
+        if hard_negative == "sit_fast" or (hard_negative is None and rng.random() < 0.25):
             # Hard negative: sitting down quickly -> moderate bump + continued seated fidgeting afterwards
             subtype = "sit_fast"
-            t0 = rng.uniform(0.45, 1.05)
-            bump = np.exp(-0.5 * ((t - t0) / 0.16) ** 2) * rng.uniform(3.5, 6.2) * dist_scale
+            t0 = rng.uniform(0.45, 1.15)
+            bump = np.exp(-0.5 * ((t - t0) / 0.16) ** 2) * rng.uniform(3.2, 5.8) * dist_scale * motion_scale
             fidget = np.where(
-                t > t0 + 0.20,
-                rng.uniform(1.1, 2.2) * dist_scale * np.sin(2.0 * np.pi * rng.uniform(1.2, 2.5) * t),
+                t > t0 + 0.18,
+                rng.uniform(1.1, 2.3) * dist_scale * motion_scale * np.sin(2.0 * np.pi * rng.uniform(1.2, 2.6) * t),
                 0.0,
             )
             amps += (bump + fidget)[:, None] * sc_weights[None, :]
-        noise_std = rng.uniform(0.45, 0.85)
+        noise_std = rng.uniform(0.38, 0.78)
 
     elif label == "WALKING":
-        # Continuous rhythmic wave fluctuation across the ENTIRE 2-second window
-        f_step = rng.uniform(1.2, 3.2)
+        # Continuous rhythmic wave fluctuation across the ENTIRE 2-second window (walking or hand waving)
+        f_step = rng.uniform(1.2, 3.4)
         ph0 = rng.uniform(0, 6.28)
-        walk_amp = rng.uniform(4.2, 8.2) * dist_scale
+        walk_amp = rng.uniform(3.2, 8.2) * dist_scale * motion_scale
         walk_wave = (
             walk_amp * np.sin(2.0 * np.pi * f_step * t + ph0)
             + 0.45 * walk_amp * np.cos(2.0 * np.pi * (2.0 * f_step) * t + ph0 + 0.8)
         )
         # Slowly varying envelope so walking stays active from start to end
-        envelope = 0.75 + 0.25 * np.sin(2.0 * np.pi * 0.55 * t + rng.uniform(0, 6.28))
+        envelope = 0.72 + 0.28 * np.sin(2.0 * np.pi * 0.55 * t + rng.uniform(0, 6.28))
         amps += (walk_wave * envelope)[:, None] * sc_weights[None, :]
-        noise_std = rng.uniform(0.55, 1.05)
+        noise_std = rng.uniform(0.45, 0.95)
 
     elif label == "FALL":
-        # Key physical pattern of a fall:
+        # Key physical pattern of a fall (early OR recent impact for fast <0.8s detection!):
         #   1) Brief pre-fall sway
-        #   2) Sudden high-amplitude impact surge (duration 0.35 - 0.65 s)
-        #   3) Abrupt stillness on the floor until the end of the 2-second window
-        t_start = rng.uniform(0.25, 0.75)
-        fall_dur = rng.uniform(0.35, 0.60)
+        #   2) Sudden high-acceleration drop (0.22 - 0.55 s) finishing by t <= 1.55 s
+        #   3) Abrupt stillness on the floor / slumped posture for >= 0.40 s until end of window
+        fall_dur = rng.uniform(0.24, 0.55)
+        t_start = rng.uniform(0.20, 1.52 - fall_dur)
         t_impact = t_start + fall_dur
 
         fall_sig = np.zeros_like(t)
         pre_mask = t < t_start
-        fall_sig[pre_mask] = rng.uniform(0.8, 1.8) * dist_scale * np.sin(2.0 * np.pi * 1.6 * t[pre_mask])
+        fall_sig[pre_mask] = rng.uniform(0.5, 1.6) * dist_scale * motion_scale * np.sin(2.0 * np.pi * 1.5 * t[pre_mask])
 
         burst_mask = (t >= t_start) & (t <= t_impact)
-        tau = (t[burst_mask] - t_start) / fall_dur
-        burst_amp = rng.uniform(11.5, 19.0) * dist_scale
-        # Sharp acceleration oscillation peaking right at floor impact
-        fall_sig[burst_mask] = (
-            burst_amp * (np.sin(np.pi * tau) ** 0.75) * np.sin(2.0 * np.pi * rng.uniform(3.5, 6.5) * (t[burst_mask] - t_start) + 0.6)
-        )
+        tau = (t[burst_mask] - t_start) / max(fall_dur, 1e-3)
+        burst_amp = rng.uniform(8.0, 18.5) * dist_scale * motion_scale
+
+        if rng.random() < 0.35:
+            # Subtype B: Fast downward slump / sudden collapse impulse + stillness
+            subtype = "fast_slump"
+            polarity = float(rng.choice([-1.0, 1.0]))
+            fall_sig[burst_mask] = polarity * burst_amp * (np.sin(np.pi * tau) ** 0.70)
+        else:
+            # Subtype A: Sharp oscillatory impact surge peaking right at floor contact
+            fall_sig[burst_mask] = (
+                burst_amp
+                * (np.sin(np.pi * tau) ** 0.75)
+                * np.sin(2.0 * np.pi * rng.uniform(3.2, 6.2) * (t[burst_mask] - t_start) + 0.6)
+            )
 
         # Post-impact stillness on the floor (very quiet tail!)
         post_mask = t > t_impact
-        shock = np.exp(-(t[post_mask] - t_impact) / 0.06)
-        fall_sig[post_mask] = 0.25 * burst_amp * shock + 0.25 * np.sin(2.0 * np.pi * 0.3 * t[post_mask])
+        shock = np.exp(-(t[post_mask] - t_impact) / 0.055)
+        fall_sig[post_mask] = 0.22 * burst_amp * shock + 0.20 * motion_scale * np.sin(2.0 * np.pi * 0.3 * t[post_mask])
 
-        # Slight static baseline shift after body lands on the floor
-        floor_shift = np.where(t > t_impact, rng.uniform(1.5, 3.5) * dist_scale, 0.0)
+        # Static multipath shift after body lands on the floor / slumps out of LOS
+        floor_shift = np.where(t > t_impact, rng.uniform(1.4, 3.8) * dist_scale * motion_scale, 0.0)
         amps += (fall_sig + floor_shift)[:, None] * sc_weights[None, :]
-        noise_std = rng.uniform(0.35, 0.70)
+        noise_std = rng.uniform(0.32, 0.68)
 
     # Add realistic Gaussian noise
     amps += rng.normal(0.0, noise_std, size=amps.shape)
@@ -141,7 +163,7 @@ def synthesize_csi_window(
     # Inject 1 random single-frame RF spike in 25% of windows (smoothed by Moving Average!)
     if rng.random() < 0.25:
         spike_idx = int(rng.integers(1, WINDOW_SAMPLES - 1))
-        amps[spike_idx] += rng.uniform(3.0, 6.0)
+        amps[spike_idx] += rng.uniform(2.5, 5.5) * motion_scale
 
     amps = np.clip(amps, 0.5, 120.0).astype(np.float32)
     rssi_dbm = int(
@@ -160,7 +182,7 @@ def synthesize_csi_window(
     }
 
 
-def generate_csv_dataset(output_dir: Path, samples_per_class: int = 300, seed: int = 2026) -> dict:
+def generate_csv_dataset(output_dir: Path, samples_per_class: int = 800, seed: int = 2026) -> dict:
     """
     Generate labeled CSV files (`empty.csv`, `stationary.csv`, `walking.csv`, `fall.csv`)
     for `T05` and `T09` scikit-learn training.
@@ -214,7 +236,7 @@ def generate_csv_dataset(output_dir: Path, samples_per_class: int = 300, seed: i
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate labeled 20 Hz Wi-Fi CSI CSV dataset (T05)")
     parser.add_argument("--out-dir", type=Path, default=Path(__file__).parent / "dataset")
-    parser.add_argument("--samples-per-class", type=int, default=300)
+    parser.add_argument("--samples-per-class", type=int, default=800)
     parser.add_argument("--seed", type=int, default=2026)
     args = parser.parse_args()
 
