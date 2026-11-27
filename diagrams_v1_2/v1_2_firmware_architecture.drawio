@@ -1,0 +1,63 @@
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="Firmware-Architecture-v1.2">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1370" pageHeight="490" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="ftitle" value="Firmware Execution Flow -- Non-Blocking Node 1 &amp; Grove Visual Alert Node 2 (v1.2)" style="text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="150" y="15" width="1060" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fn1" value="Node 1 Firmware (firmware/node1_tx_env/src/main.cpp)" style="swimlane;startSize=32;rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="65" width="560" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="f1_setup" value="setup(): WiFi STA Ch.6 HT20&#10;MCS0_LGI OFDM, WIFI_PS_NONE&#10;Broadcast Peer {0xFF..0xFF}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;" vertex="1" parent="fn1">
+          <mxGeometry x="30" y="55" width="230" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f1_dht" value="Non-Blocking DHT20 State Machine&#10;Trigger 0xAC every 5 s -&gt; Wait 85 ms&#10;Read 7 Bytes + Verify CRC-8 (0x31)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="fn1">
+          <mxGeometry x="300" y="55" width="235" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f1_tx" value="50 ms (20 Hz) Timer Loop&#10;Pack 24-Byte csi_ping_packet_t&#10;Magic 0xC51A + Temp/Humi + CRC-8 (0x07)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;" vertex="1" parent="fn1">
+          <mxGeometry x="115" y="185" width="330" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f1_send" value="esp_now_send() + GPIO45 LED Heartbeat&#10;Arduino-ESP32 v2.x &amp; v3.x Compatible" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="fn1">
+          <mxGeometry x="115" y="300" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="fe1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;exitX=0.5;exitY=1;entryX=0.25;entryY=0;" edge="1" parent="fn1" source="f1_setup" target="f1_tx"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fe2" value="Cached T/H" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;exitX=0.5;exitY=1;entryX=0.75;entryY=0;" edge="1" parent="fn1" source="f1_dht" target="f1_tx"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fe3" value="Every 50 ms" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="fn1" source="f1_tx" target="f1_send"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="fn2" value="Node 2 Firmware (firmware/node2_rx_csi/src/main.cpp)" style="swimlane;startSize=32;rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=12;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="700" y="65" width="640" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="f2_espnow" value="onEspNowDataRecv()&#10;Verify 0xC51A + CRC-8&#10;Auto-Pair MAC + Save Temp/Humi" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="fn2">
+          <mxGeometry x="30" y="55" width="260" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f2_isr" value="IRAM wifi_csi_rx_cb()&#10;Filter Locked Node 1 MAC&#10;xQueueOverwriteFromISR(g_csiQueue)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;" vertex="1" parent="fn2">
+          <mxGeometry x="350" y="55" width="260" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f2_loop" value="Main loop() (Single-Core Simple Loop)&#10;1) Extract 52 Active |H_k| = sqrt(I^2+Q^2)&#10;2) Emit JSONL @ 115200 bps USB Serial" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;fontStyle=1;" vertex="1" parent="fn2">
+          <mxGeometry x="155" y="185" width="330" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f2_io" value="Visual Alert &amp; Downlink RPC Handler&#10;RPC:ALARM/STATE + Poll D4-D3 SOS (G6/G7)&#10;LCD 16x2 (0x21) + D6-D5 Traffic Light (G8/G9)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="fn2">
+          <mxGeometry x="155" y="298" width="330" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="fe4" value="Lock MAC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="fn2" source="f2_espnow" target="f2_isr"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fe5" value="1-Slot Queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;exitX=0.5;exitY=1;entryX=0.75;entryY=0;" edge="1" parent="fn2" source="f2_isr" target="f2_loop"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fe6" value="Temp/Humi" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;exitX=0.5;exitY=1;entryX=0.25;entryY=0;" edge="1" parent="fn2" source="f2_espnow" target="f2_loop"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fe7" value="LCD &amp; LED" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;startArrow=classic;startFill=1;" edge="1" parent="fn2" source="f2_loop" target="f2_io"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="fe_rf" value="20 Hz ESP-NOW&#10;24-Byte Frame" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontSize=11;fontColor=#1f2937;strokeWidth=1.8;strokeColor=#2563eb;strokeWidth=2.0;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="f1_send" target="f2_espnow">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="645" y="395" />
+              <mxPoint x="645" y="157" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

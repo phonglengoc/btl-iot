@@ -1,67 +1,77 @@
 {
-  "primary_model": "RandomForestClassifier (scikit-learn CPU)",
-  "model_path": "E:\\HK261\\IoT\\ASSIGNMENT\\btl-iot\\ai_training\\models\\fall_rf_model.joblib",
-  "total_windows": 1200,
-  "train_windows": 960,
-  "test_windows": 240,
-  "rf_accuracy": 0.9958,
-  "rf_macro_f1": 0.9958,
-  "rf_fall_f1": 1.0,
-  "rf_train_seconds": 0.272,
-  "rf_single_infer_ms": 30.202,
-  "mlp_comparison_accuracy": 0.9917,
-  "mlp_comparison_macro_f1": 0.9917,
+  "primary_model": "RandomForestClassifier (scikit-learn CPU, 18 features)",
+  "model_path": "D:\\BACH KHOA\\hk261\\IoT\\btl\\ai_training\\models\\fall_rf_model.joblib",
+  "total_windows": 3200,
+  "real_blended_windows": 0,
+  "train_windows": 2560,
+  "test_windows": 640,
+  "rf_accuracy": 0.9922,
+  "rf_macro_f1": 0.9922,
+  "rf_fall_f1": 0.9938,
+  "rf_cv5_macro_f1": 0.9869,
+  "rf_train_seconds": 0.49,
+  "rf_single_infer_ms": 5.632,
+  "hgb_comparison_accuracy": 0.9969,
+  "hgb_comparison_macro_f1": 0.9969,
+  "mlp_comparison_accuracy": 0.9953,
+  "mlp_comparison_macro_f1": 0.9953,
   "feature_importance": {
-    "std_all": 0.0828,
-    "range_all": 0.0437,
-    "max_range_sc": 0.0764,
-    "activity_mean": 0.1113,
-    "activity_std": 0.0107,
-    "activity_max": 0.0346,
-    "delta_mean": 0.1106,
-    "delta_max": 0.1631,
-    "std_first_half": 0.0193,
-    "std_second_half": 0.0563,
-    "post_peak_std": 0.0925,
-    "peak_to_tail_ratio": 0.1988
+    "std_all": 0.0829,
+    "range_all": 0.0313,
+    "max_range_sc": 0.0535,
+    "activity_mean": 0.1074,
+    "activity_std": 0.0099,
+    "activity_max": 0.0251,
+    "delta_mean": 0.0936,
+    "delta_max": 0.104,
+    "std_first_half": 0.0155,
+    "std_second_half": 0.0177,
+    "post_peak_std": 0.0352,
+    "peak_to_tail_ratio": 0.1707,
+    "rel_std": 0.0174,
+    "rel_range": 0.0125,
+    "rel_delta_max": 0.0771,
+    "burst_crest_factor": 0.0357,
+    "active_frac": 0.0662,
+    "raw_lag1_corr": 0.0443
   },
   "classification_report": {
     "EMPTY": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 60.0
+      "support": 160.0
     },
     "STATIONARY": {
-      "precision": 0.9836065573770492,
+      "precision": 0.9815950920245399,
       "recall": 1.0,
-      "f1-score": 0.9917355371900827,
-      "support": 60.0
+      "f1-score": 0.9907120743034056,
+      "support": 160.0
     },
     "WALKING": {
-      "precision": 1.0,
-      "recall": 0.9833333333333333,
-      "f1-score": 0.9915966386554622,
-      "support": 60.0
+      "precision": 0.9936305732484076,
+      "recall": 0.975,
+      "f1-score": 0.9842271293375394,
+      "support": 160.0
     },
     "FALL": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 60.0
+      "precision": 0.99375,
+      "recall": 0.99375,
+      "f1-score": 0.99375,
+      "support": 160.0
     },
-    "accuracy": 0.9958333333333333,
+    "accuracy": 0.9921875,
     "macro avg": {
-      "precision": 0.9959016393442623,
-      "recall": 0.9958333333333333,
-      "f1-score": 0.9958330439613863,
-      "support": 240.0
+      "precision": 0.9922439163182369,
+      "recall": 0.9921875,
+      "f1-score": 0.9921723009102362,
+      "support": 640.0
     },
     "weighted avg": {
-      "precision": 0.9959016393442623,
-      "recall": 0.9958333333333333,
-      "f1-score": 0.9958330439613863,
-      "support": 240.0
+      "precision": 0.9922439163182368,
+      "recall": 0.9921875,
+      "f1-score": 0.9921723009102361,
+      "support": 640.0
     }
   }
 }

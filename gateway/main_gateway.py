@@ -32,7 +32,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR / "ai_training") not in sys.path:
     sys.path.insert(0, str(ROOT_DIR / "ai_training"))
 
-from csi_signal_features import NUM_SUBCARRIERS, WINDOW_SAMPLES  # noqa: E402
+from csi_signal_features import CLASS_NAMES, NUM_SUBCARRIERS, WINDOW_SAMPLES  # noqa: E402
 from coreiot_sync import CoreIOTGatewaySync, TelegramAlertClient, evaluate_coreiot_rulechain_logic  # noqa: E402
 from gateway_ai import GatewayFallAI  # noqa: E402
 from virtual_node_simulator import VirtualYoloUnoCluster  # noqa: E402
@@ -99,7 +99,13 @@ class LocalIoTGatewayService:
         self._ui_cmd_path = self.runtime_dir / "ui_commands.jsonl"
         self._last_event_ts: float = 0.0
         self._last_pub_ts: float = 0.0
+        self._last_sent_state: str = ""
         self._frame_counter: int = 0
+        self._ema_probs: np.ndarray | None = None
+        self._stable_state: str = "EMPTY"
+        self._pending_state: str = ""
+        self._pending_count: int = 0
+        self._fall_hold_until: float = 0.0
         self._stop_evt = threading.Event()
         self._virtual_sim: VirtualYoloUnoCluster | None = None
 
@@ -132,6 +138,8 @@ class LocalIoTGatewayService:
         if method in ("setAlarm", "alarm"):
             on = bool(val if not isinstance(val, dict) else val.get("active", False))
             cmd_line = f"RPC:ALARM:{1 if on else 0}"
+            if not on:
+                self._fall_hold_until = 0.0
         elif method in ("setFallThreshold", "fall_threshold"):
             th = float(val if not isinstance(val, dict) else val.get("threshold", 0.80))
             self.fall_threshold = float(np.clip(th, 0.50, 0.95))
@@ -167,6 +175,88 @@ class LocalIoTGatewayService:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         return entry
 
+    def _stabilize_stream_prediction(self, ai_res: dict, now: float) -> dict:
+        """
+        Fast-Attack EMA + Hysteresis + 3.5s FALL Latch for live 20 Hz serial streaming.
+        Eliminates 3-way state flicker between EMPTY/STATIONARY/WALKING while keeping
+        instant attack for real FALL surges.
+        """
+        raw_probs = np.asarray(ai_res.get("probs", [1.0, 0.0, 0.0, 0.0]), dtype=np.float64)
+        if raw_probs.shape[0] != len(CLASS_NAMES):
+            return ai_res
+
+        if self._ema_probs is None or self._frame_counter <= WINDOW_SAMPLES:
+            self._ema_probs = raw_probs.copy()
+            self._stable_state = str(ai_res["state"])
+            self._pending_state = ""
+            self._pending_count = 0
+            self._fall_hold_until = (now + 3.5) if (self._stable_state == "FALL" and raw_probs[3] >= 0.70) else 0.0
+            return ai_res
+
+        # Asymmetric EMA: instant fast-attack for FALL, decisive smoothing for non-fall jitter
+        if raw_probs[3] >= 0.55:
+            alpha = 0.85
+        elif float(np.max(raw_probs)) >= 0.80:
+            alpha = 0.65
+        else:
+            alpha = 0.35
+
+        self._ema_probs = alpha * raw_probs + (1.0 - alpha) * self._ema_probs
+        ema = self._ema_probs / (float(np.sum(self._ema_probs)) + 1e-9)
+
+        top_idx = int(np.argmax(ema))
+        top_state = CLASS_NAMES[top_idx]
+        top_conf = float(ema[top_idx])
+
+        # 1. Immediate FALL attack & 3.5-second hold latch
+        if float(ema[3]) >= 0.65 or float(raw_probs[3]) >= 0.78:
+            self._stable_state = "FALL"
+            self._pending_state = ""
+            self._pending_count = 0
+            self._fall_hold_until = now + 3.5
+            disp_conf = max(float(ema[3]), float(raw_probs[3]))
+        elif now < self._fall_hold_until:
+            self._stable_state = "FALL"
+            disp_conf = max(float(ema[3]), self.fall_threshold)
+        else:
+            # 2. Hysteresis for non-FALL states (prevents 49%/51% coin-flip flicker)
+            if self._stable_state == "FALL":
+                # Exited FALL hold window -> settle cleanly to current top non-fall state
+                self._stable_state = top_state
+                self._pending_state = ""
+                self._pending_count = 0
+            elif top_state == self._stable_state:
+                self._pending_state = ""
+                self._pending_count = 0
+            else:
+                cur_idx = CLASS_NAMES.index(self._stable_state)
+                cur_prob = float(ema[cur_idx])
+                margin = top_conf - cur_prob
+                if top_conf >= 0.68 and margin >= 0.15:
+                    self._stable_state = top_state
+                    self._pending_state = ""
+                    self._pending_count = 0
+                elif margin >= 0.08:
+                    if self._pending_state == top_state:
+                        self._pending_count += 1
+                    else:
+                        self._pending_state = top_state
+                        self._pending_count = 1
+                    if self._pending_count >= 2:
+                        self._stable_state = top_state
+                        self._pending_state = ""
+                        self._pending_count = 0
+                else:
+                    self._pending_state = ""
+                    self._pending_count = 0
+            disp_conf = float(ema[CLASS_NAMES.index(self._stable_state)])
+
+        stabilized = dict(ai_res)
+        stabilized["state"] = self._stable_state
+        stabilized["confidence"] = round(disp_conf, 4)
+        stabilized["probs"] = [round(float(p), 4) for p in ema]
+        return stabilized
+
     def process_incoming_packet(self, pkt: dict, force_publish: bool = False) -> dict | None:
         """
         Process a JSON packet from Node 2 (either 1 frame `[52]` from USB Serial
@@ -174,12 +264,15 @@ class LocalIoTGatewayService:
         evaluate alerts (`T12`, `T13`), sync CoreIOT (`T15`), and write `live_state.json`.
         """
         amps_raw = np.asarray(pkt.get("amps_52", []), dtype=np.float32)
+        is_streaming_frame = False
         if amps_raw.ndim == 2 and amps_raw.shape == (WINDOW_SAMPLES, NUM_SUBCARRIERS):
             amps_40x52 = amps_raw
         elif amps_raw.ndim == 1 and amps_raw.shape[0] == NUM_SUBCARRIERS:
+            is_streaming_frame = True
             self._csi_ring.append(amps_raw)
             self._frame_counter += 1
-            if len(self._csi_ring) < WINDOW_SAMPLES or (self._frame_counter % 5) != 0:
+            # Stride = 2 frames (~0.10s @ 20 Hz) for fast, responsive real-time detection
+            if len(self._csi_ring) < WINDOW_SAMPLES or (self._frame_counter % 2) != 0:
                 return None
             amps_40x52 = np.stack(list(self._csi_ring), axis=0)
         else:
@@ -190,6 +283,8 @@ class LocalIoTGatewayService:
 
         # Run single lightweight scikit-learn Random Forest model (`T09`)
         ai_res = self.ai_engine.predict_window(amps_40x52)
+        if is_streaming_frame:
+            ai_res = self._stabilize_stream_prediction(ai_res, time.time())
 
         node1_telemetry = {
             "room_temp_c": temp_c,
@@ -211,6 +306,10 @@ class LocalIoTGatewayService:
         }
 
         rule_res = evaluate_coreiot_rulechain_logic(node2_telemetry)
+        if self.source_mode == "serial" and ai_res["state"] != self._last_sent_state:
+            self._last_sent_state = str(ai_res["state"])
+            self._downlink_queue.append(f"RPC:STATE:{self._last_sent_state}\n")
+
         if rule_res["triggered"]:
             self._record_alert_event(rule_res["alarm_type"], ai_res, rule_res, pkt)
             self.telegram.send_alert(rule_res["alarm_type"], rule_res["telegram_text"])
@@ -245,9 +344,23 @@ class LocalIoTGatewayService:
             "coreiot_mode": "OFFLINE_MOCK_SYNC" if self.coreiot.is_mock_mode else "LIVE_CLOUD",
             "history": list(self._history_ring),
         }
+        payload_str = json.dumps(live_obj, ensure_ascii=False)
         tmp_path = self._live_state_path.with_suffix(".tmp")
-        tmp_path.write_text(json.dumps(live_obj, ensure_ascii=False), encoding="utf-8")
-        tmp_path.replace(self._live_state_path)
+        tmp_path.write_text(payload_str, encoding="utf-8")
+        # Windows raises PermissionError when Streamlit reads live_state.json concurrently
+        replaced = False
+        for _ in range(5):
+            try:
+                tmp_path.replace(self._live_state_path)
+                replaced = True
+                break
+            except PermissionError:
+                time.sleep(0.02)
+        if not replaced:
+            try:
+                self._live_state_path.write_text(payload_str, encoding="utf-8")
+            except OSError:
+                pass
         return live_obj
 
     def run_forever(self, max_steps: int | None = None) -> None:
@@ -274,6 +387,9 @@ class LocalIoTGatewayService:
                         if line.startswith("{"):
                             try:
                                 res = self.process_incoming_packet(json.loads(line))
+                                while self._downlink_queue:
+                                    ser.write(self._downlink_queue.popleft().encode("utf-8"))
+                                    ser.flush()
                                 if res is not None:
                                     steps += 1
                                     if max_steps and steps >= max_steps:

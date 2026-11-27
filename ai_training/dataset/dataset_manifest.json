@@ -1,10 +1,10 @@
 {
-  "total_windows": 1200,
+  "total_windows": 3200,
   "samples_per_class": {
-    "EMPTY": 300,
-    "STATIONARY": 300,
-    "WALKING": 300,
-    "FALL": 300
+    "EMPTY": 800,
+    "STATIONARY": 800,
+    "WALKING": 800,
+    "FALL": 800
   },
   "window_frames": 40,
   "sampling_rate_hz": 20.0,

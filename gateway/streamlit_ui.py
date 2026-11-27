@@ -180,7 +180,7 @@ with st.sidebar:
             _write_sim_control(selected_scenario, sim_dist, sim_nlos, alarm_cmd=None)
 
     st.divider()
-    st.subheader("🔊 Buzzer Alarm Control (`T08`)")
+    st.subheader("🚨 Local Alert Control — LCD & Traffic Light (`T08`)")
     c_on, c_off = st.columns(2)
     if c_on.button("🚨 Alarm ON", use_container_width=True):
         _send_gateway_rpc("setAlarm", {"active": True})
@@ -188,7 +188,7 @@ with st.sidebar:
         _send_gateway_rpc("setAlarm", {"active": False})
 
     st.divider()
-    auto_refresh = st.toggle("Auto Refresh (1s)", value=True)
+    auto_refresh = st.toggle("Auto Refresh (0.6s)", value=True)
 
 st.title("🏠 Smart Indoor Fall Detection & Room Monitoring System")
 st.caption(
@@ -197,63 +197,83 @@ st.caption(
     "**PC Gateway & Streamlit (`T08`, `T10`, `N01`)** + **CoreIOT & Telegram (`T11–T13`, `T15`)**"
 )
 
-live_state: dict = {}
-if LIVE_STATE_FILE.exists():
-    try:
-        live_state = json.loads(LIVE_STATE_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        pass
 
-if not live_state:
-    st.info("Initializing 20 Hz CSI stream and loading scikit-learn Random Forest model...")
-    time.sleep(0.8)
-    st.rerun()
+def _read_live_state() -> dict:
+    if LIVE_STATE_FILE.exists():
+        try:
+            return json.loads(LIVE_STATE_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
 
-n1 = live_state.get("node1", {})
-n2 = live_state.get("node2", {})
-ai = live_state.get("ai", {})
-rule = live_state.get("rulechain", {})
 
-# Safety / Emergency Status Banner
-if rule.get("triggered"):
-    st.error(f"🚨 **{rule.get('alarm_type')}** — {rule.get('telegram_text')}")
-elif n2.get("csi_state") == "WALKING":
-    st.info("🚶 Normal walking movement detected inside the room.")
-else:
-    st.success("✅ Room Status SAFE — No fall emergency or SOS alert detected.")
+def _read_events_list() -> list[dict]:
+    events: list[dict] = []
+    if EVENTS_LOG_FILE.exists():
+        try:
+            for ln in EVENTS_LOG_FILE.read_text(encoding="utf-8").splitlines()[-100:]:
+                if ln.strip():
+                    try:
+                        events.append(json.loads(ln))
+                    except json.JSONDecodeError:
+                        pass
+        except Exception:
+            pass
+    return events
 
-# Top 4 KPI Cards
-k1, k2, k3, k4 = st.columns(4)
-k1.metric(
-    "AI Activity State (`T09`)",
-    n2.get("csi_state", "--"),
-    f"Conf: {n2.get('ai_conf', 0)*100:.1f}% ({ai.get('infer_ms', 0):.1f} ms CPU)",
-)
-k2.metric(
-    "CSI Wave Fluctuation (2s)",
-    f"Std = {n2.get('signal_std', 0):.2f}",
-    f"Max - Min = {n2.get('signal_range', 0):.2f}",
-)
-k3.metric(
-    "DHT20 Environment (`T01`)",
-    f"{n1.get('room_temp_c', 27.5):.1f} °C / {n1.get('room_humi_rh', 65.0):.1f}%",
-    f"ESP-NOW Loss: {n1.get('pkt_loss_pct', 0):.2f}%",
-)
-k4.metric(
-    "Alarm & CoreIOT Sync",
-    "ACTIVE 🚨" if live_state.get("alarm_active") else "OFF (Safe)",
-    f"MQTT Synced: {live_state.get('coreiot_published', 0)} msgs",
-)
 
-# Load alert history from `event_log.jsonl` for N01 tab
-events_list: list[dict] = []
-if EVENTS_LOG_FILE.exists():
-    for ln in EVENTS_LOG_FILE.read_text(encoding="utf-8").splitlines()[-100:]:
-        if ln.strip():
-            try:
-                events_list.append(json.loads(ln))
-            except json.JSONDecodeError:
-                pass
+_refresh_kpi = 0.5 if auto_refresh else None
+_refresh_charts = 0.6 if auto_refresh else None
+_refresh_cloud = 1.5 if auto_refresh else None
+
+
+@st.fragment(run_every=_refresh_kpi)
+def render_live_kpi_header() -> None:
+    live_state = _read_live_state()
+    if not live_state:
+        st.info("Initializing 20 Hz CSI stream and loading scikit-learn Random Forest model...")
+        return
+
+    n1 = live_state.get("node1", {})
+    n2 = live_state.get("node2", {})
+    ai = live_state.get("ai", {})
+    rule = live_state.get("rulechain", {})
+
+    # Safety / Emergency Status Banner
+    if rule.get("triggered"):
+        st.error(f"🚨 **{rule.get('alarm_type')}** — {rule.get('telegram_text')}")
+    elif live_state.get("alarm_active"):
+        st.warning("🚨 **LOCAL HARDWARE ALARM ACTIVE** — Press **Mute Alarm** (left sidebar) or tap Node 2 button to silence.")
+    elif n2.get("csi_state") == "WALKING":
+        st.info("🚶 Normal walking movement detected inside the room.")
+    else:
+        st.success("✅ Room Status SAFE — No fall emergency or SOS alert detected.")
+
+    # Top 4 KPI Cards
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric(
+        "AI Activity State (`T09`)",
+        n2.get("csi_state", "--"),
+        f"Conf: {n2.get('ai_conf', 0)*100:.1f}% ({ai.get('infer_ms', 0):.1f} ms CPU)",
+    )
+    k2.metric(
+        "CSI Wave Fluctuation (2s)",
+        f"Std = {n2.get('signal_std', 0):.2f}",
+        f"Max - Min = {n2.get('signal_range', 0):.2f}",
+    )
+    k3.metric(
+        "DHT20 Environment (`T01`)",
+        f"{n1.get('room_temp_c', 27.5):.1f} °C / {n1.get('room_humi_rh', 65.0):.1f}%",
+        f"ESP-NOW Loss: {n1.get('pkt_loss_pct', 0):.2f}%",
+    )
+    k4.metric(
+        "Alarm & CoreIOT Sync",
+        "ACTIVE 🚨" if live_state.get("alarm_active") else "OFF (Safe)",
+        f"MQTT Synced: {live_state.get('coreiot_published', 0)} msgs",
+    )
+
+
+render_live_kpi_header()
 
 tab_live, tab_history, tab_cloud = st.tabs(
     [
@@ -263,7 +283,15 @@ tab_live, tab_history, tab_cloud = st.tabs(
     ]
 )
 
-with tab_live:
+
+@st.fragment(run_every=_refresh_charts)
+def render_live_charts() -> None:
+    live_state = _read_live_state()
+    if not live_state:
+        st.info("Waiting for first 2.0-second CSI window from Node 2...")
+        return
+
+    ai = live_state.get("ai", {})
     c_left, c_right = st.columns(2)
 
     # Line Chart 1: Moving-Average CSI disturbance over the 2.0-second window
@@ -284,19 +312,21 @@ with tab_live:
         title="2-Second Wi-Fi CSI Disturbance Curve (20 Hz, Moving Average)",
         xaxis_title="Time in Window (seconds)",
         yaxis_title="Mean Disturbance Across 52 Subcarriers",
-        height=330,
+        height=320,
         margin=dict(l=20, r=20, t=42, b=20),
+        uirevision="csi_wave_keep",
     )
-    c_left.plotly_chart(fig_wave, use_container_width=True)
+    c_left.plotly_chart(fig_wave, width="stretch", key="chart_csi_wave")
 
     # Bar Chart: Random Forest 4-class probability distribution (`T09`)
+    probs_vals = ai.get("probs", [0, 0, 0, 0])
     probs_chart = go.Figure(
         data=[
             go.Bar(
                 x=["EMPTY", "STATIONARY", "WALKING", "FALL"],
-                y=ai.get("probs", [0, 0, 0, 0]),
+                y=probs_vals,
                 marker_color=["#64748b", "#10b981", "#f59e0b", "#ef4444"],
-                text=[f"{p*100:.1f}%" for p in ai.get("probs", [0, 0, 0, 0])],
+                text=[f"{p*100:.1f}%" for p in probs_vals],
                 textposition="auto",
             )
         ]
@@ -304,10 +334,11 @@ with tab_live:
     probs_chart.update_layout(
         title="Activity Classification Probabilities — Random Forest CPU (`T09`)",
         yaxis=dict(range=[0, 1.08], title="Probability"),
-        height=330,
+        height=320,
         margin=dict(l=20, r=20, t=42, b=20),
+        uirevision="rf_probs_keep",
     )
-    c_right.plotly_chart(probs_chart, use_container_width=True)
+    c_right.plotly_chart(probs_chart, width="stretch", key="chart_rf_probs")
 
     # Line Chart 2: Rolling history of Signal Std/Range & Room Temp/Humidity
     hist = live_state.get("history", [])
@@ -320,43 +351,28 @@ with tab_live:
         fig_std.add_trace(go.Scatter(x=df_h["time"], y=df_h["signal_range"], mode="lines", name="Max - Min Range"))
         fig_std.update_layout(
             title="CSI Standard Deviation (Std) & Peak-to-Peak (Max - Min) Trend",
-            height=270,
+            height=265,
             margin=dict(l=20, r=20, t=40, b=20),
+            uirevision="std_trend_keep",
         )
-        c_h1.plotly_chart(fig_std, use_container_width=True)
+        c_h1.plotly_chart(fig_std, width="stretch", key="chart_std_trend")
 
         fig_env = go.Figure()
         fig_env.add_trace(go.Scatter(x=df_h["time"], y=df_h["temp_c"], mode="lines+markers", name="Temperature (°C)"))
         fig_env.add_trace(go.Scatter(x=df_h["time"], y=df_h["humi_rh"], mode="lines", name="Humidity (%RH)"))
         fig_env.update_layout(
             title="Room Temperature & Humidity Over Time (DHT20 — `T01`)",
-            height=270,
+            height=265,
             margin=dict(l=20, r=20, t=40, b=20),
+            uirevision="env_trend_keep",
         )
-        c_h2.plotly_chart(fig_env, use_container_width=True)
+        c_h2.plotly_chart(fig_env, width="stretch", key="chart_env_trend")
 
-with tab_history:
-    st.subheader("🔍 Alert History Query Assistant (`N01`)")
-    st.write("Reads directly from `gateway/runtime/event_log.jsonl` and answers statistics about recorded events.")
 
-    preset = st.selectbox("Select a quick preset question:", options=PRESET_QUESTIONS)
-    custom_q = st.text_input("Or type your own question:", value=preset)
-    if custom_q:
-        st.info(answer_event_history_query(custom_q, live_state, events_list))
-
-    st.divider()
-    st.subheader("📋 Alert Event History Table (`event_log.jsonl`)")
-    if not events_list:
-        st.caption(
-            "No alerts recorded yet. Select `FALL_EMERGENCY` or `SOS_BUTTON_HOLD` in the left sidebar to test!"
-        )
-    else:
-        df_ev = pd.DataFrame(reversed(events_list))
-        cols_show = ["timestamp", "alarm_type", "state", "ai_conf", "signal_std", "temp_c", "humi_rh", "telegram_text"]
-        st.dataframe(df_ev[[c for c in cols_show if c in df_ev.columns]], use_container_width=True)
-
-with tab_cloud:
-    st.subheader(f"☁️ CoreIOT Gateway MQTT Sync Journal (`{live_state.get('coreiot_mode')}`)")
+@st.fragment(run_every=_refresh_cloud)
+def render_cloud_logs() -> None:
+    live_state = _read_live_state()
+    st.subheader(f"☁️ CoreIOT Gateway MQTT Sync Journal (`{live_state.get('coreiot_mode', 'SYNC')}`)")
     if MQTT_JOURNAL_FILE.exists():
         tail_lines = MQTT_JOURNAL_FILE.read_text(encoding="utf-8").splitlines()[-8:]
         for raw_ln in reversed(tail_lines):
@@ -373,6 +389,33 @@ with tab_cloud:
     else:
         st.caption("No Telegram alerts sent yet.")
 
-if auto_refresh:
-    time.sleep(1.0)
-    st.rerun()
+
+with tab_live:
+    render_live_charts()
+
+with tab_history:
+    st.subheader("🔍 Alert History Query Assistant (`N01`)")
+    st.write("Reads directly from `gateway/runtime/event_log.jsonl` and answers statistics about recorded events.")
+    if st.button("🔄 Refresh Alert Log", key="btn_refresh_log"):
+        pass
+
+    live_now = _read_live_state()
+    events_list = _read_events_list()
+    preset = st.selectbox("Select a quick preset question:", options=PRESET_QUESTIONS)
+    custom_q = st.text_input("Or type your own question:", value=preset)
+    if custom_q:
+        st.info(answer_event_history_query(custom_q, live_now, events_list))
+
+    st.divider()
+    st.subheader("📋 Alert Event History Table (`event_log.jsonl`)")
+    if not events_list:
+        st.caption(
+            "No alerts recorded yet. Trigger a fall or hold the Node 2 SOS button (>3s) to log an event!"
+        )
+    else:
+        df_ev = pd.DataFrame(reversed(events_list))
+        cols_show = ["timestamp", "alarm_type", "state", "ai_conf", "signal_std", "temp_c", "humi_rh", "telegram_text"]
+        st.dataframe(df_ev[[c for c in cols_show if c in df_ev.columns]], width="stretch")
+
+with tab_cloud:
+    render_cloud_logs()
