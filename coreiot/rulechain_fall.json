@@ -1,0 +1,135 @@
+{
+  "ruleChain": {
+    "additionalInfo": {
+      "description": "HCMUT IoT HK261 - Simple Fall & SOS Alert RuleChain (T12, T13)"
+    },
+    "name": "Smart_Room_Fall_Alert_RuleChain",
+    "type": "CORE",
+    "firstRuleNodeId": null,
+    "root": false,
+    "debugMode": true
+  },
+  "metadata": {
+    "firstNodeIndex": 0,
+    "nodes": [
+      {
+        "additionalInfo": {
+          "description": "Route Post telemetry messages",
+          "layoutX": 220,
+          "layoutY": 160
+        },
+        "type": "org.thingsboard.rule.engine.filter.TbMsgTypeSwitchNode",
+        "name": "Message Type Switch",
+        "debugMode": false,
+        "configuration": {
+          "version": 0
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Save CSI AI & DHT20 telemetry into CoreIOT database",
+          "layoutX": 480,
+          "layoutY": 160
+        },
+        "type": "org.thingsboard.rule.engine.telemetry.TbMsgTimeseriesNode",
+        "name": "Save Room Telemetry",
+        "debugMode": false,
+        "configuration": {
+          "defaultTTL": 0,
+          "skipLatestPersistence": false,
+          "useServerTs": false
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Simple condition check: FALL or SOS (T12)",
+          "layoutX": 760,
+          "layoutY": 160
+        },
+        "type": "org.thingsboard.rule.engine.filter.TbJsFilterNode",
+        "name": "Check FALL or SOS?",
+        "debugMode": true,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "var conf = Number(msg.ai_conf || 0);\nvar th = Number(msg.fall_threshold || 0.80);\nreturn (msg.csi_state === 'FALL' && conf >= th) || (msg.sos_triggered === true);"
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Build simple Telegram notification text",
+          "layoutX": 1040,
+          "layoutY": 160
+        },
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "Format Alert Message",
+        "debugMode": true,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "if (msg.sos_triggered === true) {\n    msg.alarm_type = 'CRITICAL_SOS_EMERGENCY';\n    msg.text = '[SOS EMERGENCY] Manual SOS button was held on Node 2! Room Temp: ' + msg.room_temp_c + 'C.';\n} else {\n    msg.alarm_type = 'CRITICAL_FALL_EMERGENCY';\n    msg.text = '[FALL EMERGENCY] Human FALL detected in the monitored room! AI Confidence: ' + Math.round(Number(msg.ai_conf || 0) * 100) + '%, Room Temp: ' + msg.room_temp_c + 'C.';\n}\nreturn {msg: msg, metadata: metadata, msgType: msgType};"
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Create persistent CoreIOT Alarm on Dashboard (T11, T12)",
+          "layoutX": 1340,
+          "layoutY": 70
+        },
+        "type": "org.thingsboard.rule.engine.action.TbCreateAlarmNode",
+        "name": "Create CoreIOT Alarm",
+        "debugMode": true,
+        "configuration": {
+          "scriptLang": "JS",
+          "alarmDetailsBuildJs": "var details = {};\ndetails.alarm_type = msg.alarm_type;\ndetails.ai_conf = msg.ai_conf;\ndetails.text = msg.text;\nreturn details;",
+          "useMessageAlarmData": false,
+          "overwriteAlarmDetails": true,
+          "alarmType": "${alarm_type}",
+          "severity": "CRITICAL",
+          "propagate": true,
+          "relationTypes": []
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Send emergency message via Telegram Bot REST API (T13)",
+          "layoutX": 1340,
+          "layoutY": 180
+        },
+        "type": "org.thingsboard.rule.engine.rest.TbRestApiCallNode",
+        "name": "Send Telegram Alert (T13)",
+        "debugMode": true,
+        "configuration": {
+          "restEndpointUrlPattern": "https://api.telegram.org/bot${ss_telegramBotToken}/sendMessage?chat_id=${ss_telegramChatId}",
+          "requestMethod": "POST",
+          "useSimpleClientHttpFactory": true,
+          "readTimeoutMs": 5000,
+          "maxParallelRequestsCount": 10,
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      {
+        "additionalInfo": {
+          "description": "Send Downlink RPC to Gateway -> Node 2 to turn ON buzzer (T08, T15)",
+          "layoutX": 1340,
+          "layoutY": 290
+        },
+        "type": "org.thingsboard.rule.engine.rpc.TbSendRPCRequestNode",
+        "name": "Turn ON Buzzer via RPC",
+        "debugMode": false,
+        "configuration": {
+          "timeoutInSeconds": 10
+        }
+      }
+    ],
+    "connections": [
+      {"fromIndex": 0, "toIndex": 1, "type": "Post telemetry"},
+      {"fromIndex": 1, "toIndex": 2, "type": "Success"},
+      {"fromIndex": 2, "toIndex": 3, "type": "True"},
+      {"fromIndex": 3, "toIndex": 4, "type": "Success"},
+      {"fromIndex": 3, "toIndex": 5, "type": "Success"},
+      {"fromIndex": 3, "toIndex": 6, "type": "Success"}
+    ],
+    "ruleChainConnections": null
+  }
+}

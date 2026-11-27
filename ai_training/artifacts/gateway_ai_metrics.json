@@ -1,0 +1,67 @@
+{
+  "primary_model": "RandomForestClassifier (scikit-learn CPU)",
+  "model_path": "E:\\HK261\\IoT\\ASSIGNMENT\\btl-iot\\ai_training\\models\\fall_rf_model.joblib",
+  "total_windows": 1200,
+  "train_windows": 960,
+  "test_windows": 240,
+  "rf_accuracy": 0.9958,
+  "rf_macro_f1": 0.9958,
+  "rf_fall_f1": 1.0,
+  "rf_train_seconds": 0.272,
+  "rf_single_infer_ms": 30.202,
+  "mlp_comparison_accuracy": 0.9917,
+  "mlp_comparison_macro_f1": 0.9917,
+  "feature_importance": {
+    "std_all": 0.0828,
+    "range_all": 0.0437,
+    "max_range_sc": 0.0764,
+    "activity_mean": 0.1113,
+    "activity_std": 0.0107,
+    "activity_max": 0.0346,
+    "delta_mean": 0.1106,
+    "delta_max": 0.1631,
+    "std_first_half": 0.0193,
+    "std_second_half": 0.0563,
+    "post_peak_std": 0.0925,
+    "peak_to_tail_ratio": 0.1988
+  },
+  "classification_report": {
+    "EMPTY": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 60.0
+    },
+    "STATIONARY": {
+      "precision": 0.9836065573770492,
+      "recall": 1.0,
+      "f1-score": 0.9917355371900827,
+      "support": 60.0
+    },
+    "WALKING": {
+      "precision": 1.0,
+      "recall": 0.9833333333333333,
+      "f1-score": 0.9915966386554622,
+      "support": 60.0
+    },
+    "FALL": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 60.0
+    },
+    "accuracy": 0.9958333333333333,
+    "macro avg": {
+      "precision": 0.9959016393442623,
+      "recall": 0.9958333333333333,
+      "f1-score": 0.9958330439613863,
+      "support": 240.0
+    },
+    "weighted avg": {
+      "precision": 0.9959016393442623,
+      "recall": 0.9958333333333333,
+      "f1-score": 0.9958330439613863,
+      "support": 240.0
+    }
+  }
+}

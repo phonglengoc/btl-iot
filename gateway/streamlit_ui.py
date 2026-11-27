@@ -1,16 +1,16 @@
 """
-PC Local IoT Gateway Real-Time Monitoring, Control & Event-Recording Dashboard (`T10`, `N06`, `N01`).
+PC Local IoT Gateway Dashboard & Alert History Assistant (`T10`, `N01`).
 
-Run with a single command (even with ZERO physical hardware connected!):
+Run with one command (works even without physical hardware connected):
     streamlit run gateway/streamlit_ui.py
 
 Features:
-  - `T10`: Live 52-Subcarrier Wi-Fi CSI Heatmap, 64x64 STFT Spectrogram, Edge INT8 vs RTX 5070 GPU
-           confidence gauges, DHT20 temperature/humidity, BLE authorization status, and RPC controls.
-  - `N04`: Real-time GPU inference latency & ExecutionProvider telemetry (`CUDAExecutionProvider`).
-  - `N06`: Automatic Event Detection & Dual-Panel Snapshot Gallery with timestamped history.
-  - `T05`: Integrated Labeled CSV Dataset Recorder directly inside the Gateway UI.
-  - `N01`: Built-in Natural Language Telemetry Assistant (Q&A over live room logs).
+  - `T10`: Real-time line charts of Moving-Average CSI disturbance (2s window),
+           room temperature & humidity (DHT20), Random Forest probabilities (`T09`),
+           and direct RPC buttons to turn the Buzzer ON/OFF (`RPC:ALARM:1` / `RPC:ALARM:0`).
+  - `N01`: Alert History Query tab reading `gateway/runtime/event_log.jsonl` with quick
+           preset questions and free-text Q&A (fall count, latest alert, room temperature stats).
+  - `T15`: Live inspection of CoreIOT MQTT sync packets and Telegram alerts.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -31,8 +32,18 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 RUNTIME_DIR = ROOT_DIR / "gateway" / "runtime"
 LIVE_STATE_FILE = RUNTIME_DIR / "live_state.json"
 CONTROL_FILE = RUNTIME_DIR / "simulator_control.json"
-EVENTS_LOG_FILE = RUNTIME_DIR / "event_snapshots_log.jsonl"
+UI_CMD_FILE = RUNTIME_DIR / "ui_commands.jsonl"
+EVENTS_LOG_FILE = RUNTIME_DIR / "event_log.jsonl"
 MQTT_JOURNAL_FILE = RUNTIME_DIR / "coreiot_mqtt_journal.jsonl"
+TELEGRAM_LOG_FILE = RUNTIME_DIR / "telegram_alerts.jsonl"
+
+PRESET_QUESTIONS = [
+    "How many fall incidents have been detected?",
+    "When did the most recent emergency alert occur?",
+    "What is the current room temperature and humidity (and average during alerts)?",
+    "Were there any manual SOS button alerts?",
+    "Summarize the current room status and alert history.",
+]
 
 
 @st.cache_resource
@@ -55,95 +66,137 @@ def ensure_background_gateway_running() -> str:
     return "started_embedded"
 
 
-def answer_telemetry_query(question: str, live_state: dict, events: list[dict]) -> str:
-    """Local intelligent log analyzer (`N01`) for natural-language telemetry Q&A."""
-    q = question.lower()
+def answer_event_history_query(question: str, live_state: dict, events: list[dict]) -> str:
+    """
+    Simple rule-based Alert History Assistant (`N01`):
+    Reads `event_log.jsonl` records and answers statistical questions about falls, SOS, and room environment.
+    """
+    q = question.lower().strip()
+    n1 = live_state.get("node1", {})
     n2 = live_state.get("node2", {})
-    falls = [e for e in events if "FALL" in e.get("alarm_type", "")]
-    intrusions = [e for e in events if "INTRUSION" in e.get("alarm_type", "")]
-    sos_list = [e for e in events if "SOS" in e.get("alarm_type", "")]
 
-    if any(k in q for k in ("fall", "emergency")):
+    falls = [e for e in events if "FALL" in str(e.get("alarm_type", ""))]
+    sos_events = [e for e in events if "SOS" in str(e.get("alarm_type", ""))]
+
+    if any(k in q for k in ("latest", "recent", "last", "when")):
+        if not events:
+            return "✅ **No emergency incidents** have been recorded in `event_log.jsonl` yet."
+        last = events[-1]
+        return (
+            f"🕒 **Most Recent Alert:** `{last['alarm_type']}` at **`{last['timestamp']}`**.\n"
+            f"- AI State: **{last['state']}** (Confidence: `{last['ai_conf']*100:.1f}%`, Signal Std = `{last['signal_std']}`)\n"
+            f"- Room Environment at Alert Time: Temp **`{last['temp_c']} °C`**, Humidity **`{last['humi_rh']} %RH`**."
+        )
+
+    if any(k in q for k in ("sos", "button")):
+        if not sos_events:
+            return "✅ No manual **SOS emergency button** presses have been recorded on Node 2."
+        last_sos = sos_events[-1]
+        return (
+            f"🆘 Recorded **{len(sos_events)} manual SOS alert(s)**! "
+            f"Most recent at `{last_sos['timestamp']}` (Room Temp: `{last_sos['temp_c']} °C`)."
+        )
+
+    if any(k in q for k in ("temp", "humid", "environment", "dht20")):
+        cur_temp = float(n1.get("room_temp_c", 27.5))
+        cur_humi = float(n1.get("room_humi_rh", 65.0))
+        if events:
+            avg_t = float(np.mean([float(e.get("temp_c", cur_temp)) for e in events]))
+            avg_h = float(np.mean([float(e.get("humi_rh", cur_humi)) for e in events]))
+            return (
+                f"🌡️ **Room Environment (I2C DHT20 Sensor — `T01`):**\n"
+                f"- Current: Temp **`{cur_temp:.1f} °C`** | Humidity **`{cur_humi:.1f} %RH`**\n"
+                f"- Average across **{len(events)} recorded alert(s)**: **`{avg_t:.1f} °C`** / **`{avg_h:.1f} %RH`**."
+            )
+        return (
+            f"🌡️ **Current Room Environment (DHT20 — `T01`):**\n"
+            f"- Temperature: **`{cur_temp:.1f} °C`** | Humidity: **`{cur_humi:.1f} %RH`**."
+        )
+
+    if any(k in q for k in ("fall", "how many", "count")):
         if not falls:
-            return "✅ **No fall incidents** have been recorded during the current monitoring session."
+            return "✅ **No fall incidents** have been detected during this monitoring session."
         last = falls[-1]
+        avg_conf = float(np.mean([float(e.get("ai_conf", 0.0)) for e in falls])) * 100.0
         return (
-            f"🚨 Recorded **{len(falls)} fall event(s)**! Most recent at `{last['timestamp']}` "
-            f"with fused AI confidence **{last['fused_conf']*100:.1f}%** (room temp `{last['temp_c']}°C`). "
-            f"Evidence spectrogram saved to `{Path(last['snapshot_png']).name}`."
+            f"🚨 Total fall emergencies recorded: **{len(falls)} incident(s)**!\n"
+            f"- Most recent: **`{last['timestamp']}`** (Confidence `{last['ai_conf']*100:.1f}%`, Temp `{last['temp_c']} °C`)\n"
+            f"- Average AI confidence across fall alerts: **`{avg_conf:.1f}%`**."
         )
-    if any(k in q for k in ("intruder", "intrusion", "security", "ble")):
-        ble_str = (
-            f"Authorized resident BLE tag `{n2.get('ble_mac')}` (`{n2.get('ble_rssi')} dBm`)"
-            if n2.get("ble_authorized")
-            else "NO authorized resident BLE tag currently in range"
-        )
-        return (
-            f"🔐 Current BLE identity status: **{ble_str}**. "
-            f"Total intrusion alerts in event log: **{len(intrusions)}**."
-        )
+
     return (
-        f"📊 **Live Room Telemetry Summary:**\n"
-        f"- Recognized Activity: **{n2.get('csi_state', 'UNKNOWN')}** (Fused AI Conf: `{n2.get('fused_conf', 0)*100:.1f}%`)\n"
-        f"- Ambient Environment (DHT20 `T01`): **{n2.get('room_temp_c', 27.5):.1f} °C** | Humidity **{n2.get('room_humi_rh', 65.0):.1f} %RH**\n"
-        f"- Incident History (`N06`): **{len(falls)} fall(s)**, **{len(intrusions)} intrusion alert(s)**, **{len(sos_list)} SOS signal(s)**."
+        f"📊 **Room Status & Alert History Summary (`N01`):**\n"
+        f"- Current AI State: **{n2.get('csi_state', 'UNKNOWN')}** "
+        f"(Random Forest Confidence: `{n2.get('ai_conf', 0)*100:.1f}%`, Signal Std: `{n2.get('signal_std', 0):.2f}`)\n"
+        f"- Room Environment (DHT20 `T01`): **{n1.get('room_temp_c', 27.5):.1f} °C** | Humidity **{n1.get('room_humi_rh', 65.0):.1f} %RH**\n"
+        f"- Total entries in `event_log.jsonl`: **{len(events)} alert(s)** "
+        f"(**{len(falls)} fall(s)**, **{len(sos_events)} SOS alert(s)**)."
     )
+
+
+def _write_sim_control(scenario: str, dist: float, nlos: bool, alarm_cmd: bool | None = None) -> None:
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {"scenario": scenario, "distance_m": dist, "nlos": nlos, "alarm_cmd": alarm_cmd}
+    CONTROL_FILE.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _send_gateway_rpc(method: str, params: dict) -> None:
+    """Queue a downlink RPC command (`ui_commands.jsonl`) that works on BOTH physical Serial and Simulator!"""
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    with UI_CMD_FILE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"method": method, "params": params}) + "\n")
 
 
 st.set_page_config(
-    page_title="HCMUT IoT HK261 - Wi-Fi CSI Radar & GPU Gateway",
-    page_icon="📡",
+    page_title="HCMUT IoT HK261 - Smart Fall Detection & Room Monitoring",
+    page_icon="🏠",
     layout="wide",
 )
 
-gw_mode = ensure_background_gateway_running()
+ensure_background_gateway_running()
+gw_cfg_now = load_gateway_config().get("gateway", {})
+is_serial_hw_mode = gw_cfg_now.get("source_mode", "simulator") == "serial"
 
-# Sidebar: Scenario Injector (Virtual HIL) & Downlink RPC Controls (`T08`, `T10`)
+# Sidebar: Hardware / Simulator Status & Live Buzzer RPC Controls (`T08`, `T10`)
 with st.sidebar:
-    st.header("🎛️ HIL Control & RPC Console")
-    selected_scenario = st.selectbox(
-        "Physics HIL Scenario (Hardware-Free Mode)",
-        options=VirtualYoloUnoCluster.SCENARIOS,
-        index=5,
-        help="Select an activity scenario synthesized by the 64-subcarrier OFDM multipath generator.",
-    )
-    sim_dist = st.slider(
-        "Tx–Rx / Subject Distance (m)",
-        1.0,
-        3.5,
-        2.0,
-        0.5,
-    )
-    sim_nlos = st.checkbox(
-        "Through-Wall Occlusion (NLOS)",
-        value=False,
-    )
+    st.header("🎛️ Gateway Control Panel")
+    if is_serial_hw_mode:
+        st.success(
+            f"🔌 **Physical Board Mode (USB Serial)**\n\n"
+            f"Port: `{gw_cfg_now.get('serial_port', 'COM4')}` @ `{gw_cfg_now.get('serial_baudrate', 115200)} bps`"
+        )
+    else:
+        st.info("💻 **Simulator Mode** (Set `source_mode: serial` in `gateway/config.yaml` for physical YoloUNO boards)")
+        selected_scenario = st.selectbox(
+            "Simulation Scenario (Hardware-Free Mode)",
+            options=VirtualYoloUnoCluster.SCENARIOS,
+            index=1,
+            help="Select an activity scenario to test the Random Forest classifier and alerting pipeline.",
+        )
+        sim_dist = st.slider("Tx–Rx Distance (m)", 1.0, 3.5, 2.0, 0.5)
+        sim_nlos = st.checkbox("Through-Wall / Obstacle (NLOS)", value=False)
 
-    col_b1, col_b2 = st.columns(2)
-    if col_b1.button("Apply Scenario", type="primary", use_container_width=True):
-        CONTROL_FILE.write_text(
-            json.dumps({"scenario": selected_scenario, "distance_m": sim_dist, "nlos": sim_nlos, "reset_alarm": False}),
-            encoding="utf-8",
-        )
-    if col_b2.button("Mute Siren", use_container_width=True):
-        CONTROL_FILE.write_text(
-            json.dumps({"scenario": selected_scenario, "distance_m": sim_dist, "nlos": sim_nlos, "reset_alarm": True}),
-            encoding="utf-8",
-        )
+        if st.button("▶ Apply Scenario", type="primary", use_container_width=True):
+            _write_sim_control(selected_scenario, sim_dist, sim_nlos, alarm_cmd=None)
 
     st.divider()
-    st.subheader("🔗 Node 2 Embedded Web UI (`T07`)")
-    st.markdown("Open Node 2's direct HTTP portal: [http://127.0.0.1:8082](http://127.0.0.1:8082)")
-    auto_refresh = st.toggle("Real-time Auto Refresh (1s)", value=True)
+    st.subheader("🔊 Buzzer Alarm Control (`T08`)")
+    c_on, c_off = st.columns(2)
+    if c_on.button("🚨 Alarm ON", use_container_width=True):
+        _send_gateway_rpc("setAlarm", {"active": True})
+    if c_off.button("🔕 Mute Alarm", use_container_width=True):
+        _send_gateway_rpc("setAlarm", {"active": False})
 
-st.title("📡 Camera-Free Wi-Fi CSI & BLE Radar for Fall & Intrusion Detection")
+    st.divider()
+    auto_refresh = st.toggle("Auto Refresh (1s)", value=True)
+
+st.title("🏠 Smart Indoor Fall Detection & Room Monitoring System")
 st.caption(
     "Faculty of Computer Science & Engineering — HCMUT (HK261) | "
-    "Dual-Tier Collaborative AI: **ESP32-S3 INT8 TinyML (`T04`)** + "
-    "**NVIDIA RTX 5070 ONNX CUDA (`T09`, `N04`)** + **CoreIOT Cloud Sync (`T15`)**"
+    "**DHT20 (`T01`)** + **ESP-NOW 20 Hz (`T06`)** + **Random Forest CPU (`T09`)** + "
+    "**PC Gateway & Streamlit (`T08`, `T10`, `N01`)** + **CoreIOT & Telegram (`T11–T13`, `T15`)**"
 )
 
-# Read latest Gateway state
 live_state: dict = {}
 if LIVE_STATE_FILE.exists():
     try:
@@ -152,7 +205,7 @@ if LIVE_STATE_FILE.exists():
         pass
 
 if not live_state:
-    st.info("Initializing 100 Hz Wi-Fi CSI stream and loading ONNX 2D-CNN onto RTX 5070 GPU...")
+    st.info("Initializing 20 Hz CSI stream and loading scikit-learn Random Forest model...")
     time.sleep(0.8)
     st.rerun()
 
@@ -161,131 +214,164 @@ n2 = live_state.get("node2", {})
 ai = live_state.get("ai", {})
 rule = live_state.get("rulechain", {})
 
-# Banner Alert Status
+# Safety / Emergency Status Banner
 if rule.get("triggered"):
     st.error(f"🚨 **{rule.get('alarm_type')}** — {rule.get('telegram_text')}")
-elif n2.get("csi_state") == "WALKING" and n2.get("ble_authorized"):
-    st.warning("🚶 Authorized Resident Walking Motion Detected (Valid BLE Beacon Verified).")
+elif n2.get("csi_state") == "WALKING":
+    st.info("🚶 Normal walking movement detected inside the room.")
 else:
-    st.success("✅ Room Status SAFE — No fall emergency or unauthorized intrusion detected.")
+    st.success("✅ Room Status SAFE — No fall emergency or SOS alert detected.")
 
-# Top KPI Row
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Fused AI State", n2.get("csi_state", "--"), f"Conf: {n2.get('fused_conf', 0)*100:.1f}%")
-k2.metric("TinyML 1D-CNN (`T04`)", ai.get("edge_state", "--"), f"INT8: {ai.get('edge_conf', 0)*100:.1f}%")
+# Top 4 KPI Cards
+k1, k2, k3, k4 = st.columns(4)
+k1.metric(
+    "AI Activity State (`T09`)",
+    n2.get("csi_state", "--"),
+    f"Conf: {n2.get('ai_conf', 0)*100:.1f}% ({ai.get('infer_ms', 0):.1f} ms CPU)",
+)
+k2.metric(
+    "CSI Wave Fluctuation (2s)",
+    f"Std = {n2.get('signal_std', 0):.2f}",
+    f"Max - Min = {n2.get('signal_range', 0):.2f}",
+)
 k3.metric(
-    "GPU 2D-CNN (`T09`, `N04`)",
-    ai.get("gpu_state", "--"),
-    f"{ai.get('gpu_infer_ms', 0):.2f} ms ({ai.get('active_provider', 'CPU').replace('ExecutionProvider', '')})",
+    "DHT20 Environment (`T01`)",
+    f"{n1.get('room_temp_c', 27.5):.1f} °C / {n1.get('room_humi_rh', 65.0):.1f}%",
+    f"ESP-NOW Loss: {n1.get('pkt_loss_pct', 0):.2f}%",
 )
 k4.metric(
-    "BLE Identity (`T03`)",
-    "Authorized (Resident)" if n2.get("ble_authorized") else "No BLE Tag",
-    f"{n2.get('ble_mac', 'NONE')} ({n2.get('ble_rssi', -100)} dBm)",
-)
-k5.metric(
-    "DHT20 Env (`T01`)",
-    f"{n1.get('room_temp_c', 27.5):.1f} °C / {n1.get('room_humi_rh', 65.0):.1f}%",
-    f"CoreIOT Sync: {live_state.get('coreiot_published', 0)} msgs",
+    "Alarm & CoreIOT Sync",
+    "ACTIVE 🚨" if live_state.get("alarm_active") else "OFF (Safe)",
+    f"MQTT Synced: {live_state.get('coreiot_published', 0)} msgs",
 )
 
-tab_live, tab_snapshots, tab_coreiot, tab_ai_chat = st.tabs(
+# Load alert history from `event_log.jsonl` for N01 tab
+events_list: list[dict] = []
+if EVENTS_LOG_FILE.exists():
+    for ln in EVENTS_LOG_FILE.read_text(encoding="utf-8").splitlines()[-100:]:
+        if ln.strip():
+            try:
+                events_list.append(json.loads(ln))
+            except json.JSONDecodeError:
+                pass
+
+tab_live, tab_history, tab_cloud = st.tabs(
     [
-        "📈 Live CSI Heatmap & STFT (`T10`)",
-        "📸 Event Snapshot Gallery (`N06`)",
-        "☁️ CoreIOT Sync & RuleChain (`T12`, `T15`)",
-        "🤖 AI Telemetry Assistant (`N01`)",
+        "📈 Real-Time Monitoring (`T10`)",
+        "🔍 Alert History Assistant (`N01`)",
+        "☁️ CoreIOT MQTT & Telegram (`T12`, `T13`, `T15`)",
     ]
 )
 
 with tab_live:
     c_left, c_right = st.columns(2)
-    heatmap_arr = np.array(live_state.get("heatmap_50x52", np.zeros((50, 52)))).T
-    spec_arr = np.array(live_state.get("spectrogram_64x64", np.zeros((64, 64))))
 
-    fig_hm = go.Figure(data=go.Heatmap(z=heatmap_arr, colorscale="Viridis"))
-    fig_hm.update_layout(
-        title="52-Subcarrier Wi-Fi CSI Amplitude Heatmap (2.0 s @ 100 Hz)",
-        xaxis_title="Time Window Sample Index (2.0 s)",
-        yaxis_title="OFDM Subcarrier Index (0..51)",
-        height=370,
-        margin=dict(l=20, r=20, t=40, b=20),
+    # Line Chart 1: Moving-Average CSI disturbance over the 2.0-second window
+    curve = ai.get("activity_curve", [0.0] * 40)
+    t_axis = np.round(np.arange(len(curve)) / 20.0, 2)
+    fig_wave = go.Figure()
+    fig_wave.add_trace(
+        go.Scatter(
+            x=t_axis,
+            y=curve,
+            mode="lines+markers",
+            name="CSI Disturbance (Moving Avg)",
+            line=dict(color="#2563eb", width=2.5),
+            marker=dict(size=4),
+        )
     )
-    c_left.plotly_chart(fig_hm, use_container_width=True)
-
-    fig_sp = go.Figure(data=go.Heatmap(z=spec_arr, colorscale="Inferno"))
-    fig_sp.update_layout(
-        title=f"64×64 STFT Time–Frequency Doppler Spectrogram ({ai.get('gpu_device', 'GPU')})",
-        xaxis_title="STFT Time Frame (0..63)",
-        yaxis_title="Doppler Frequency Bin (0..63)",
-        height=370,
-        margin=dict(l=20, r=20, t=40, b=20),
+    fig_wave.update_layout(
+        title="2-Second Wi-Fi CSI Disturbance Curve (20 Hz, Moving Average)",
+        xaxis_title="Time in Window (seconds)",
+        yaxis_title="Mean Disturbance Across 52 Subcarriers",
+        height=330,
+        margin=dict(l=20, r=20, t=42, b=20),
     )
-    c_right.plotly_chart(fig_sp, use_container_width=True)
+    c_left.plotly_chart(fig_wave, use_container_width=True)
 
+    # Bar Chart: Random Forest 4-class probability distribution (`T09`)
     probs_chart = go.Figure(
         data=[
             go.Bar(
-                name="Edge INT8 1D-CNN (0.4)",
                 x=["EMPTY", "STATIONARY", "WALKING", "FALL"],
-                y=ai.get("edge_probs", [0, 0, 0, 0]),
-            ),
-            go.Bar(
-                name="RTX 5070 GPU 2D-CNN (0.6)",
-                x=["EMPTY", "STATIONARY", "WALKING", "FALL"],
-                y=ai.get("gpu_probs", [0, 0, 0, 0]),
-            ),
-            go.Bar(
-                name="Fused Collaborative AI",
-                x=["EMPTY", "STATIONARY", "WALKING", "FALL"],
-                y=ai.get("fused_probs", [0, 0, 0, 0]),
-            ),
+                y=ai.get("probs", [0, 0, 0, 0]),
+                marker_color=["#64748b", "#10b981", "#f59e0b", "#ef4444"],
+                text=[f"{p*100:.1f}%" for p in ai.get("probs", [0, 0, 0, 0])],
+                textposition="auto",
+            )
         ]
     )
     probs_chart.update_layout(
-        barmode="group",
-        title="Class Probability Distribution Across Collaborative AI Tiers",
-        yaxis=dict(range=[0, 1.05]),
-        height=280,
-        margin=dict(l=20, r=20, t=40, b=20),
+        title="Activity Classification Probabilities — Random Forest CPU (`T09`)",
+        yaxis=dict(range=[0, 1.08], title="Probability"),
+        height=330,
+        margin=dict(l=20, r=20, t=42, b=20),
     )
-    st.plotly_chart(probs_chart, use_container_width=True)
+    c_right.plotly_chart(probs_chart, use_container_width=True)
 
-events_list: list[dict] = []
-if EVENTS_LOG_FILE.exists():
-    for ln in EVENTS_LOG_FILE.read_text(encoding="utf-8").splitlines()[-20:]:
-        if ln.strip():
-            events_list.append(json.loads(ln))
+    # Line Chart 2: Rolling history of Signal Std/Range & Room Temp/Humidity
+    hist = live_state.get("history", [])
+    if hist:
+        df_h = pd.DataFrame(hist)
+        c_h1, c_h2 = st.columns(2)
 
-with tab_snapshots:
-    st.subheader("📸 Automatic Dual-Panel Event Spectrogram Archive (`N06`)")
+        fig_std = go.Figure()
+        fig_std.add_trace(go.Scatter(x=df_h["time"], y=df_h["signal_std"], mode="lines", name="CSI Signal Std"))
+        fig_std.add_trace(go.Scatter(x=df_h["time"], y=df_h["signal_range"], mode="lines", name="Max - Min Range"))
+        fig_std.update_layout(
+            title="CSI Standard Deviation (Std) & Peak-to-Peak (Max - Min) Trend",
+            height=270,
+            margin=dict(l=20, r=20, t=40, b=20),
+        )
+        c_h1.plotly_chart(fig_std, use_container_width=True)
+
+        fig_env = go.Figure()
+        fig_env.add_trace(go.Scatter(x=df_h["time"], y=df_h["temp_c"], mode="lines+markers", name="Temperature (°C)"))
+        fig_env.add_trace(go.Scatter(x=df_h["time"], y=df_h["humi_rh"], mode="lines", name="Humidity (%RH)"))
+        fig_env.update_layout(
+            title="Room Temperature & Humidity Over Time (DHT20 — `T01`)",
+            height=270,
+            margin=dict(l=20, r=20, t=40, b=20),
+        )
+        c_h2.plotly_chart(fig_env, use_container_width=True)
+
+with tab_history:
+    st.subheader("🔍 Alert History Query Assistant (`N01`)")
+    st.write("Reads directly from `gateway/runtime/event_log.jsonl` and answers statistics about recorded events.")
+
+    preset = st.selectbox("Select a quick preset question:", options=PRESET_QUESTIONS)
+    custom_q = st.text_input("Or type your own question:", value=preset)
+    if custom_q:
+        st.info(answer_event_history_query(custom_q, live_state, events_list))
+
+    st.divider()
+    st.subheader("📋 Alert Event History Table (`event_log.jsonl`)")
     if not events_list:
-        st.info(
-            "No anomalous events recorded yet. Select `FALL_EMERGENCY` or `WALKING_INTRUDER` in the left sidebar to test!"
+        st.caption(
+            "No alerts recorded yet. Select `FALL_EMERGENCY` or `SOS_BUTTON_HOLD` in the left sidebar to test!"
         )
     else:
-        for ev in reversed(events_list[-6:]):
-            with st.expander(f"[{ev['timestamp']}] {ev['alarm_type']} — Fused Conf: {ev['fused_conf']*100:.1f}%", expanded=True):
-                st.write(ev["telegram_text"])
-                snap_p = Path(ev["snapshot_png"])
-                if snap_p.exists():
-                    st.image(str(snap_p), use_container_width=True)
+        df_ev = pd.DataFrame(reversed(events_list))
+        cols_show = ["timestamp", "alarm_type", "state", "ai_conf", "signal_std", "temp_c", "humi_rh", "telegram_text"]
+        st.dataframe(df_ev[[c for c in cols_show if c in df_ev.columns]], use_container_width=True)
 
-with tab_coreiot:
-    st.subheader(f"☁️ CoreIOT Gateway Synchronized MQTT Journal (`{live_state.get('coreiot_mode')}`)")
+with tab_cloud:
+    st.subheader(f"☁️ CoreIOT Gateway MQTT Sync Journal (`{live_state.get('coreiot_mode')}`)")
     if MQTT_JOURNAL_FILE.exists():
         tail_lines = MQTT_JOURNAL_FILE.read_text(encoding="utf-8").splitlines()[-8:]
         for raw_ln in reversed(tail_lines):
             st.code(raw_ln, language="json")
+    else:
+        st.caption("No MQTT messages recorded yet.")
 
-with tab_ai_chat:
-    st.subheader("🤖 Natural-Language Room Telemetry Assistant (`N01`)")
-    user_q = st.text_input(
-        "Ask about live room status or recorded incidents:",
-        value="Were there any fall emergencies or intrusion alerts recorded today?",
-    )
-    if user_q:
-        st.markdown(answer_telemetry_query(user_q, live_state, events_list))
+    st.divider()
+    st.subheader("📨 Telegram Alert Log (`T13`)")
+    if TELEGRAM_LOG_FILE.exists():
+        tg_lines = TELEGRAM_LOG_FILE.read_text(encoding="utf-8").splitlines()[-6:]
+        for raw_ln in reversed(tg_lines):
+            st.code(raw_ln, language="json")
+    else:
+        st.caption("No Telegram alerts sent yet.")
 
 if auto_refresh:
     time.sleep(1.0)

@@ -1,139 +1,134 @@
-# Camera-Free Wi-Fi CSI & BLE Radar System for Indoor Fall and Intrusion Detection with Collaborative Edge–GPU AI
+# Smart Indoor Fall Detection & Room Monitoring System (Wi-Fi CSI & CoreIOT)
 
-**Privacy-Preserving Device-Free Indoor Fall & Intrusion Detection System using Wi-Fi CSI, BLE, and Collaborative Edge–GPU AI**
+**Lightweight Camera-Free Fall Detection & Environmental Monitoring using 20 Hz Wi-Fi CSI, I2C DHT20, CPU Random Forest AI & CoreIOT**
 
 - **Course:** Internet of Things (IoT) — Semester HK261 (Academic Year 2026–2027)
-- **Faculty:** Faculty of Computer Science and Engineering — Ho Chi Minh City University of Technology (HCMUT), VNU-HCM
-- **Instructor:** Dr. Nguyễn Hòa Hưng (`nguyenhoahung@hcmut.edu.vn`)
-- **Project Group (Group 01):**
-  1. **Lê Ngọc Uy Phong** (Student ID: `2352905` — `phong.le9999@hcmut.edu.vn`) — Hardware architecture, dual YoloUNO ESP32-S3 firmware, ESP-NOW 100 Hz CSI (`T06`), I2C DHT20 (`T01`), BLE 5.0 scanner (`T03`), Embedded Web Server (`T07`)
-  2. **Huỳnh Võ Quỳnh Anh** (Student ID: `2452043` — `anh.huynhvo02@hcmut.edu.vn`) — CSV dataset collector (`T05`), causal Hampel/Butterworth DSP, INT8 TinyML 1D-CNN (`T04`), GPU 2D-CNN Spectrogram (`T09`, `N04`), quantitative evaluation
-  3. **Trần Thị Bình** (Student ID: `2452157` — `binh.tranbinh2856@hcmut.edu.vn`) — PC Local IoT Gateway (`T08`), Streamlit real-time heatmap & snapshot dashboard (`T10`, `N06`), CoreIOT Gateway sync (`T15`), Dashboard (`T11`), RuleChain (`T12`), Telegram alerting (`T13`) & OTA updates (`T14`)
+- **Institution:** Faculty of Computer Science & Engineering — Ho Chi Minh City University of Technology (HCMUT)
+- **Instructor:** Dr. Nguyen Hoa Hung (`nguyenhoahung@hcmut.edu.vn`)
+- **Team Roles (3 Members — Streamlined Architecture):**
+  1. **Member 1 — Le Ngoc Uy Phong (`2352905`)** (Hardware & Basic Firmware): Wire I2C `DHT20` sensor on Node 1 (`T01`), wire Buzzer + RGB LED + SOS button on Node 2, implement 20 Hz `ESP-NOW` transmission (`T06`) and `115200 bps` USB Serial output.
+  2. **Member 2 — Huynh Vo Quynh Anh (`2452043`)** (Data & Python CPU AI): Record 52 Wi-Fi CSI subcarrier amplitudes to CSV (`T05`), apply **Moving Average** smoothing + basic statistical features (**Std, Max - Min**), and train a lightweight **Random Forest (`scikit-learn`)** classifier for the PC Gateway (`T09`).
+  3. **Member 3 — Tran Thi Binh (`2452157`)** (Local Gateway & CoreIOT Cloud): Build the Python Local IoT Gateway (`T08`), Streamlit live dashboard & alert history assistant (`T10`, `N01`), CoreIOT MQTT Gateway sync (`T15`), Dashboard (`T11`), RuleChain (`T12`), and Telegram emergency alerts (`T13`).
 
 ---
 
-## 1. System Architecture & Technology Coverage Matrix (14.0 T-Points + 2.0 N-Points)
+## 1. Course Technology Score Mapping (10.5 → 8.0/8.0 Table A + 1.0/1.0 Table B)
 
-The system exploits amplitude and phase perturbations across **64 OFDM subcarriers (Wi-Fi CSI)** transmitted at **100 Hz** over **ESP-NOW** between two **YoloUNO (ESP32-S3)** boards to detect indoor falls in total darkness **without cameras** and **without requiring elderly residents to wear sensors**. Passive **BLE 5.0** scanning is fused with Wi-Fi CSI to distinguish authorized residents from unauthorized intruders.
+All high-complexity components (INT8 C++ TinyML, GPU 2D-CNN/CUDA, Hampel/Butterworth DSP, BLE scanning, Embedded Web Server, Dual-OTA SHA-256, and STFT snapshots) have been removed while keeping a **+2.5-point safety margin** in Table A and full credit in Table B:
 
-| Code | Technology Component | Score | Source Files / Implementation Artifacts |
+| Code | Technology Component | Points | Source Files / Evidence |
 |---|---|---:|---|
-| **T01** | I2C environmental sensor (`DHT20`, `0x38`) on Tasmota / ESP32-S3 | 0.5 | `firmware/node1_tx_env/src/main.cpp`, `tasmota_yolo_uno_dht20.md` |
-| **T03** | Passive Bluetooth Low Energy identification (`MAC` + `RSSI`) | 1.5 | `firmware/node2_rx_edge_ai/include/ble_scanner.h` |
-| **T04** | On-device TinyML inference (`INT8 1D-CNN`) | 1.0 | `firmware/node2_rx_edge_ai/include/tinyml_infer.h`, `model_data.h` |
-| **T05** | Labeled CSV dataset collector, training & TinyML export toolchain | 1.0 | `ai_training/csi_serial_collector.py`, `train_tinyml_1dcnn.py` |
-| **T06** | High-rate 100 Hz wireless transport over `ESP-NOW` | 1.5 | `firmware/include/csi_protocol.h`, `node1_tx_env`, `node2_rx_edge_ai` |
-| **T07** | Custom Embedded Web Server on microcontroller (`Port 80`) | 1.0 | `firmware/node2_rx_edge_ai/include/web_server.h` |
-| **T08** | PC Local IoT Gateway for telemetry aggregation & RPC dispatch | 1.0 | `gateway/main_gateway.py` |
-| **T09** | Local Gateway AI engine analyzing `STFT 2D-CNN` spectrograms | 1.0 | `gateway/gpu_spectrogram_ai.py`, `ai_training/train_gpu_2dcnn.py` |
-| **T10** | Real-time monitoring & control UI at the Local Gateway | 1.0 | `gateway/streamlit_ui.py` |
-| **T11** | CoreIOT Device Profile, Template & Remote Dashboard | 1.0 | `coreiot/dashboard_template.json` |
-| **T12** | Smart event processing workflow on CoreIOT RuleChain | 1.0 | `coreiot/rulechain_fall_sec.json`, `gateway/coreiot_sync.py` |
-| **T13** | Emergency alert notifications via Telegram Bot API | 0.5 | `gateway/coreiot_sync.py`, `coreiot/rulechain_fall_sec.json` |
-| **T14** | Over-the-Air firmware updates (`OTA` Dual-Partition + SHA-256) | 2.0 | `firmware/include/ota_updater.h`, `firmware/partitions_16mb_ota.csv` |
-| **T15** | CoreIOT Gateway synchronization with PC Local IoT Gateway | 2.0 | `gateway/coreiot_sync.py` (`v1/gateway/connect`, `telemetry`, `rpc`) |
-| **N04** | GPU-accelerated AI inference (`ONNX Runtime CUDA`) | +1.0 | `gateway/gpu_spectrogram_ai.py` (`NVIDIA GeForce RTX 5070`) |
-| **N06** | Custom dashboard with automatic incident detection & snapshot archive | +1.0 | `gateway/main_gateway.py`, `gateway/streamlit_ui.py` |
-| **N01** | Natural-language telemetry & event log assistant | Bonus | Tab 4 in `gateway/streamlit_ui.py` |
+| **T01** | I2C Temperature & Humidity Sensor (`DHT20`, `0x38`) on Node 1 | 0.5 | `firmware/node1_tx_env/src/main.cpp` |
+| **T06** | 20 Hz `ESP-NOW` Wireless Link between Node 1 and Node 2 | 1.5 | `firmware/include/csi_protocol.h`, `node1_tx_env`, `node2_rx_csi` |
+| **T05** | Labeled CSV Data Collection Tool (Serial / Simulator) | 1.0 | `ai_training/csi_serial_collector.py`, `csi_data_generator.py` |
+| **T09** | Lightweight Gateway AI (`scikit-learn` Random Forest on CPU) | 1.0 | `ai_training/train_gateway_ai.py`, `gateway/gateway_ai.py` |
+| **T08** | Python Local IoT Gateway (Serial Ingestion & `RPC:ALARM` Control) | 1.0 | `gateway/main_gateway.py` |
+| **T10** | Real-Time Local Monitoring Dashboard using Streamlit | 1.0 | `gateway/streamlit_ui.py` |
+| **T11** | CoreIOT Device Profile & Remote Monitoring Dashboard | 1.0 | `coreiot/dashboard_template.json` |
+| **T12** | Simple Fall / SOS Alert Condition on CoreIOT RuleChain | 1.0 | `coreiot/rulechain_fall.json`, `gateway/coreiot_sync.py` |
+| **T13** | Instant Emergency Notification via Telegram Bot API | 0.5 | `gateway/coreiot_sync.py`, `coreiot/rulechain_fall.json` |
+| **T15** | PC Local Gateway to CoreIOT Cloud Synchronization via MQTT | 2.0 | `gateway/coreiot_sync.py` (`v1/gateway/connect`, `telemetry`, `rpc`) |
+| **Total A** | **Table A Total** | **10.5 → 8.0/8.0** | +2.5 pts safety margin |
+| **N01** | Alert History Query Assistant (`event_log.jsonl`) on Streamlit | **+1.0 → 1.0/1.0** | Tab 2 in `gateway/streamlit_ui.py` |
 
 ---
 
+## 2. Repository Structure
 ## 2. Repository Structure
 
 ```text
 .
 ├── firmware/
 │   ├── include/
-│   │   ├── config.example.h         # Wi-Fi, ESP-NOW MAC, BLE, and CoreIOT template (NO real secrets)
-│   │   ├── csi_protocol.h           # 24-byte ESP-NOW binary frame layout & CRC-8
-│   │   └── ota_updater.h            # CoreIOT OTA updater + SHA-256 verification + Rollback (T14)
-│   ├── node1_tx_env/                # YoloUNO #1 Firmware: I2C DHT20 + 100 Hz ESP-NOW Tx (T01, T06)
-│   ├── node2_rx_edge_ai/            # YoloUNO #2 Firmware: CSI Rx, BLE, INT8 TinyML, Web Server (T03, T04, T07)
-│   └── partitions_16mb_ota.csv      # Symmetric ota_0 / ota_1 partition table for 16 MB Flash
+│   │   ├── config.example.h         # Node MAC addresses, GPIO pins, 115200 baud, 20 Hz config
+│   │   └── csi_protocol.h           # 24-byte ESP-NOW packet, CRC-8 & 52-subcarrier amplitude helper
+│   ├── node1_tx_env/                # Node 1 (YoloUNO #1): I2C DHT20 + 20 Hz ESP-NOW Tx (T01, T06)
+│   └── node2_rx_csi/                # Node 2 (YoloUNO #2): 52 CSI Rx, USB Serial, Buzzer/LED/SOS (T06, T08)
 ├── ai_training/
-│   ├── csi_dsp_common.py            # Hampel + 4th-order Butterworth + STFT Spectrogram DSP
-│   ├── csi_physics_generator.py     # 64-subcarrier OFDM multipath physics simulator (T05)
-│   ├── csi_serial_collector.py      # Labeled CSV recorder for USB-CDC / HIL Simulator (T05)
-│   ├── train_tinyml_1dcnn.py        # 1D-CNN training, INT8 quantization & C++ model_data.h export (T04)
-│   ├── train_gpu_2dcnn.py           # 2D-CNN training on RTX 5070 GPU & ONNX export (T09, N04)
-│   ├── train_1dcnn_tinyml.ipynb     # TinyML training Jupyter Notebook
-│   └── train_2dcnn_gpu.ipynb        # GPU 2D-CNN Spectrogram training Jupyter Notebook
+│   ├── csi_signal_features.py       # Moving Average smoothing + 12 basic statistical features (Std, Max-Min)
+│   ├── csi_data_generator.py        # 20 Hz labeled CSV generator for EMPTY, STATIONARY, WALKING, FALL (T05)
+│   ├── csi_serial_collector.py      # Record 115200 bps Serial or Simulator stream to CSV (T05)
+│   └── train_gateway_ai.py          # Train Random Forest (with MLP benchmark) & export `fall_rf_model.joblib` (T09)
 ├── gateway/
-│   ├── config.example.yaml          # Serial/Simulator, CoreIOT & Telegram configuration template
-│   ├── virtual_node_simulator.py    # Physics HIL cluster simulator for YoloUNO #1 + #2 + BLE + Web UI
-│   ├── gpu_spectrogram_ai.py        # ONNX Runtime CUDA inference engine on RTX 5070 (T09, N04)
-│   ├── coreiot_sync.py              # CoreIOT Gateway MQTT sync, RuleChain & Telegram alerts (T12, T13, T15)
-│   ├── main_gateway.py              # PC Local IoT Gateway central service & snapshot recorder (T08, N06)
-│   └── streamlit_ui.py              # Real-time CSI Heatmap, STFT & Control Dashboard (T10, N06, N01)
+│   ├── config.example.yaml          # Serial/Simulator, AI model, CoreIOT & Telegram configuration template
+│   ├── virtual_node_simulator.py    # Hardware-free virtual YoloUNO #1 + #2 simulator for instant demos
+│   ├── gateway_ai.py                # CPU inference engine loading `fall_rf_model.joblib` (T09)
+│   ├── coreiot_sync.py              # CoreIOT MQTT Gateway sync, RuleChain logic & Telegram Bot (T12, T13, T15)
+│   ├── main_gateway.py              # Main PC Local Gateway service: Serial -> AI -> event_log.jsonl -> MQTT (T08)
+│   └── streamlit_ui.py              # Local web dashboard with line charts, alarm buttons & N01 assistant (T10, N01)
 ├── coreiot/
-│   ├── dashboard_template.json      # Importable CoreIOT Dashboard template (T11)
-│   ├── rulechain_fall_sec.json      # Importable CoreIOT RuleChain JSON (T12, T13)
-│   └── ota_guide.md                 # Step-by-step CoreIOT & OTA deployment guide (T14)
-├── tests/
-│   ├── cpp_tinyml_unit_test.cpp     # C++17 unit test verifying INT8 bit-exactness against Python
-│   ├── run_quantitative_eval.py     # Chapter 4 quantitative evaluation suite (50 trials/scenario)
-│   └── test_end_to_end.py           # End-to-end automated integration test suite (Pytest)
-├── diagrams_en/                     # Editable Draw.io architecture & workflow diagrams (.drawio)
-├── graphics/                        # Rendered figures, charts, and UI screenshots
-└── HK261_Group01_IoTReport.pdf      # Complete English technical report (LaTeX)
+│   ├── dashboard_template.json      # Importable CoreIOT Dashboard JSON (T11)
+│   ├── rulechain_fall.json          # Importable CoreIOT Fall/SOS RuleChain JSON (T12, T13)
+│   └── coreiot_setup_guide.md       # Step-by-step CoreIOT & Telegram setup instructions
+└── tests/
+    ├── cpp_protocol_unit_test.cpp   # C++17 unit test for 24-byte ESP-NOW struct & CRC-8
+    ├── run_quantitative_eval.py     # Distance/NLOS accuracy & CPU latency benchmark
+    └── test_end_to_end.py           # End-to-end automated Pytest suite
 ```
 
 ---
 
-## 3. Quick Start Without Physical Hardware (Physics HIL Simulator + RTX 5070 GPU)
+## 3. Quick Start (Hardware-Free Mode, Pure CPU)
 
-The repository includes a full **Physics Hardware-in-the-Loop Simulator (`VirtualYoloUnoCluster`)** that synthesizes 64-subcarrier OFDM multipath CSI streams, runs the real **INT8 TinyML** model, serves the **Node 2 Embedded Web UI (`T07`)** at `http://127.0.0.1:8082`, and executes second-tier verification on **NVIDIA RTX 5070 (`CUDAExecutionProvider`)**:
+No GPU, CUDA, or PyTorch required — runs smoothly on any standard laptop:
 
 ```powershell
-# 1. Activate Python 3.11 virtual environment (CUDA 12.8 sm_120 support for RTX 5070)
-.\.venv\Scripts\Activate.ps1
+# 1. Create Python virtual environment and install lightweight CPU packages
+python -m venv .venv
+.\.venv\Scripts\pip install -r requirements.txt
 
-# 2. Generate CSI dataset & train both AI models on RTX 5070 GPU
-python ai_training/csi_physics_generator.py --samples-per-class 350
-python ai_training/train_tinyml_1dcnn.py --epochs 65
-python ai_training/train_gpu_2dcnn.py --epochs 45
+# 2. Generate 20 Hz CSV dataset & train the scikit-learn Random Forest model (~5 seconds on CPU)
+.\.venv\Scripts\python ai_training\csi_data_generator.py --samples-per-class 300
+.\.venv\Scripts\python ai_training\train_gateway_ai.py
 
-# 3. Launch the PC Local IoT Gateway Dashboard (auto-starts the YoloUNO HIL simulator)
-streamlit run gateway/streamlit_ui.py
+# 3. Run the automated end-to-end test suite
+.\.venv\Scripts\pytest -v tests/test_end_to_end.py
+
+# 4. Launch the Streamlit Dashboard (auto-starts the virtual YoloUNO simulator in background!)
+.\.venv\Scripts\streamlit run gateway\streamlit_ui.py
 ```
 
-- Open **`http://localhost:8501`** to view the live 52-subcarrier CSI heatmap, 64×64 STFT spectrogram, trigger **`FALL_EMERGENCY`** or **`WALKING_INTRUDER`** scenarios, and inspect automatic incident snapshots (`N06`).
-- Open **`http://127.0.0.1:8082`** to interact directly with the **Node 2 Embedded Web Server (`T07`)**.
+Or simply run the one-click launcher: `.\run_demo.ps1`.
+Open **`http://localhost:8501`** in your browser to view the live Moving-Average CSI disturbance charts, trigger `FALL_EMERGENCY` / `SOS_BUTTON_HOLD` scenarios, toggle the buzzer alarm via RPC, and query incident statistics in the **`N01`** tab.
 
 ---
 
-## 4. Building & Flashing Firmware onto Physical YoloUNO (ESP32-S3) Boards
+## 4. Running on Physical YoloUNO (ESP32-S3) Boards
+
+### Hardware Wiring
+- **Node 1 (`YoloUNO #1` — Transmitter):** Connect I2C `DHT20` sensor (`VDD -> 3V3`, `GND -> GND`, `SDA -> GPIO11`, `SCL -> GPIO12`).
+- **Node 2 (`YoloUNO #2` — Receiver):** Connect Buzzer (`GPIO10` + `GND`), RGB WS2812B LED (`GPIO18` + `3V3/5V` + `GND`), and SOS/Mute push-button (`GPIO14` <-> `GND`, internal `INPUT_PULLUP`). Connect Node 2 to the PC via USB-C.
+
+### Step 1: Flash Both Boards via PlatformIO (USB, 115200 bps)
+Node 1 and Node 2 **auto-pair on Wi-Fi Channel 6** out of the box (Broadcast MAC `{0xFF,...}` with `0xC51A` + CRC-8 verification). If multiple teams test in the same room, copy `firmware/include/config.example.h` to `firmware/include/config.h` and pin the exact board MAC addresses printed on Serial at boot.
 
 ```powershell
-# Step 1: Create local configuration files from templates (ignored by .gitignore)
-Copy-Item firmware/include/config.example.h firmware/include/config.h
-Copy-Item gateway/config.example.yaml gateway/config.yaml
-# -> Fill in your real WIFI_SSID, WIFI_PASSWORD, YoloUNO MAC addresses, and COREIOT_GATEWAY_TOKEN.
-
-# Step 2: Build and flash Node 1 (Tx + DHT20) & Node 2 (Rx + BLE + TinyML)
 pio run -d firmware/node1_tx_env -e yolo_uno -t upload --upload-port COM3
-pio run -d firmware/node2_rx_edge_ai -e yolo_uno -t upload --upload-port COM4
-
-# Step 3: Set `source_mode: "serial"` in `gateway/config.yaml` and run the Gateway
-python gateway/main_gateway.py --config gateway/config.yaml
-streamlit run gateway/streamlit_ui.py
+pio run -d firmware/node2_rx_csi -e yolo_uno -t upload --upload-port COM4
 ```
 
----
-
-## 5. Automated Testing & Quantitative Evaluation
+### Step 2: Collect Real Room Data & Retrain Random Forest (`T05`, `T09`)
+Place Node 1 and Node 2 ~2–3 meters apart across the monitored room, then record 20–30 real windows per class directly from Node 2 over USB Serial (`COM4`):
 
 ```powershell
-# Run full integration test suite (C++ INT8 vs Python INT8, RTX 5070 CUDA, Web Server, CoreIOT, RuleChain)
-.\.venv\Scripts\pytest.exe -v
+.\.venv\Scripts\python ai_training\csi_serial_collector.py --mode serial --port COM4 --label EMPTY --windows 25 --replace
+.\.venv\Scripts\python ai_training\csi_serial_collector.py --mode serial --port COM4 --label STATIONARY --windows 25 --replace
+.\.venv\Scripts\python ai_training\csi_serial_collector.py --mode serial --port COM4 --label WALKING --windows 25 --replace
+.\.venv\Scripts\python ai_training\csi_serial_collector.py --mode serial --port COM4 --label FALL --windows 25 --replace
 
-# Run Chapter 4 quantitative evaluation (50 trials per scenario: 1m, 2m, 3m, NLOS, BLE, Fast Sit)
-.\.venv\Scripts\python.exe tests/run_quantitative_eval.py
+# Retrain the Random Forest model on your real room dataset (~2 seconds on CPU)
+.\.venv\Scripts\python ai_training\train_gateway_ai.py --dataset-dir ai_training\dataset\real
 ```
 
----
+### Step 3: Switch Gateway to Live USB Serial & Launch Dashboard (`T08`, `T10`, `T15`)
+```powershell
+Copy-Item gateway/config.example.yaml gateway/config.yaml
+# Edit gateway/config.yaml:
+#   source_mode: "serial"
+#   serial_port: "COM4"
+#   gateway_token: "<YOUR_COREIOT_GATEWAY_TOKEN>"
+#   bot_token / chat_id: "<YOUR_TELEGRAM_CREDENTIALS>"
 
-## 6. Security Policy & AI Tool Disclosure
-
-- **Credential Hygiene:** This repository strictly excludes real Wi-Fi credentials, CoreIOT Access Tokens, and Telegram Bot Tokens via `.gitignore` (only sanitized templates `.env.example`, `config.example.h`, and `config.example.yaml` are committed).
-- **AI & Reference Disclosure:** Generative AI tools were used to assist with code architecture review, LaTeX formatting, and simulation test-pipeline refinement prior to physical hardware deployment. ESP32-S3 CSI data structures follow the official `espressif/esp-csi` documentation and the `CoreIOT / ThingsBoard Gateway MQTT API`.
+.\.venv\Scripts\python gateway\main_gateway.py --config gateway\config.yaml
+.\.venv\Scripts\streamlit run gateway\streamlit_ui.py
+```

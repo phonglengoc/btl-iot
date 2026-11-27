@@ -1,11 +1,11 @@
 {
-  "title": "HCMUT IoT HK261 - Wi-Fi CSI Fall & Intrusion Radar Dashboard",
+  "title": "HCMUT IoT HK261 - Smart Fall Detection & Room Monitoring Dashboard",
   "configuration": {
-    "description": "Remote Monitoring, BLE Identity, Time-Series Telemetry, RPC Control & OTA Status Dashboard (T11, T14, T15)",
+    "description": "Remote Monitoring, DHT20 Environment, Gateway AI Fall Detection & Buzzer RPC Control (T11, T12, T13, T15)",
     "entityAliases": {
       "alias_node2_rx": {
         "id": "alias_node2_rx",
-        "alias": "YoloUNO Node 2 (CSI Radar & Edge AI)",
+        "alias": "YoloUNO Node 2 (CSI Rx & Alarm)",
         "filter": {
           "type": "singleEntity",
           "resolveMultiple": false,
@@ -34,7 +34,7 @@
         "bundleAlias": "cards",
         "typeAlias": "simple_card",
         "type": "latest",
-        "title": "1. Safety Status & BLE Identity (T03, T04, T09)",
+        "title": "1. Room Status & AI Fall Classification (T09)",
         "sizeX": 8,
         "sizeY": 4,
         "row": 0,
@@ -45,11 +45,10 @@
               "type": "entity",
               "entityAliasId": "alias_node2_rx",
               "dataKeys": [
-                {"name": "csi_state", "type": "timeseries", "label": "Fused AI State"},
-                {"name": "fused_conf", "type": "timeseries", "label": "Fused AI Confidence"},
-                {"name": "ble_authorized", "type": "timeseries", "label": "Authorized Resident BLE"},
-                {"name": "ble_mac", "type": "timeseries", "label": "BLE Beacon MAC"},
-                {"name": "ble_rssi", "type": "timeseries", "label": "BLE Signal Strength (dBm)"}
+                {"name": "csi_state", "type": "timeseries", "label": "AI State (Random Forest)"},
+                {"name": "ai_conf", "type": "timeseries", "label": "AI Confidence"},
+                {"name": "signal_std", "type": "timeseries", "label": "CSI Signal Std"},
+                {"name": "signal_range", "type": "timeseries", "label": "Peak-to-Peak (Max - Min)"}
               ]
             }
           ]
@@ -73,8 +72,7 @@
               "dataKeys": [
                 {"name": "room_temp_c", "type": "timeseries", "label": "Room Temperature (°C)", "units": "°C"},
                 {"name": "room_humi_rh", "type": "timeseries", "label": "Relative Humidity (%RH)", "units": "%"},
-                {"name": "pkt_loss_pct", "type": "timeseries", "label": "ESP-NOW Packet Loss (%)", "units": "%"},
-                {"name": "fw_version", "type": "timeseries", "label": "OTA Firmware Version"}
+                {"name": "pkt_loss_pct", "type": "timeseries", "label": "ESP-NOW Packet Loss (%)", "units": "%"}
               ]
             }
           ]
@@ -85,7 +83,7 @@
         "bundleAlias": "charts",
         "typeAlias": "basic_timeseries",
         "type": "timeseries",
-        "title": "3. Real-Time CSI Motion Energy & Dual-Tier AI Confidence",
+        "title": "3. Real-Time CSI Fluctuation & AI Confidence Chart",
         "sizeX": 16,
         "sizeY": 6,
         "row": 4,
@@ -97,10 +95,9 @@
               "type": "entity",
               "entityAliasId": "alias_node2_rx",
               "dataKeys": [
-                {"name": "csi_motion_energy", "type": "timeseries", "label": "CSI Motion Energy"},
-                {"name": "edge_conf", "type": "timeseries", "label": "Edge TinyML Conf"},
-                {"name": "gpu_conf", "type": "timeseries", "label": "RTX 5070 GPU Conf"},
-                {"name": "fused_conf", "type": "timeseries", "label": "Fused AI Conf"}
+                {"name": "signal_std", "type": "timeseries", "label": "CSI Signal Std"},
+                {"name": "signal_range", "type": "timeseries", "label": "Peak-to-Peak (Max - Min)"},
+                {"name": "ai_conf", "type": "timeseries", "label": "AI Confidence"}
               ]
             }
           ]
@@ -111,7 +108,7 @@
         "bundleAlias": "gpio_widgets",
         "typeAlias": "basic_gpio_control",
         "type": "rpc",
-        "title": "4. Remote RPC Controls: Siren & Intrusion Armed Mode (T08, T11)",
+        "title": "4. Remote RPC Control: Buzzer Alarm ON / OFF (T08, T11)",
         "sizeX": 8,
         "sizeY": 5,
         "row": 10,
@@ -120,8 +117,7 @@
           "targetDeviceAliasIds": ["alias_node2_rx"],
           "requestTimeout": 2000,
           "switchPanelObjects": [
-            {"name": "Buzzer Alarm (GPIO10)", "method": "setAlarm"},
-            {"name": "Intrusion Security Armed Mode", "method": "setSecurityArmed"}
+            {"name": "Buzzer Alarm (GPIO10)", "method": "setAlarm"}
           ]
         }
       },
@@ -130,7 +126,7 @@
         "bundleAlias": "alarm_widgets",
         "typeAlias": "alarms_table",
         "type": "alarm",
-        "title": "5. Emergency Fall & Intrusion Alarm Log (T12, T13)",
+        "title": "5. Emergency Fall & SOS Alarm Log (T12, T13)",
         "sizeX": 8,
         "sizeY": 5,
         "row": 10,
